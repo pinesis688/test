@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>平台冒险 - 鹰眼术</title>
+  <style>
+    /* CSS Reset */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      touch-action: none;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ==================== 选关界面 ==================== */
+    #levelSelectScreen {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0c29 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #levelSelectScreen.hidden {
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    #levelSelectScreen h1 {
+      font-size: clamp(32px, 10vw, 56px);
+      margin-bottom: 8px;
+      text-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    #levelSelectScreen .subtitle {
+      font-size: clamp(12px, 3vw, 16px);
+      color: #a0a0a0;
+      margin-bottom: 40px;
+      letter-spacing: 1px;
+    }
+
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .level-card {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(145deg, rgba(42, 42, 74, 0.9), rgba(26, 26, 58, 0.9));
+      border: 2px solid rgba(102, 126, 234, 0.3);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .level-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .level-card:hover::before,
+    .level-card:active::before {
+      opacity: 1;
+    }
+
+    .level-card.unlocked {
+      border-color: rgba(102, 126, 234, 0.5);
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+    }
+
+    .level-card.locked {
+      border-color: rgba(255, 107, 107, 0.25);
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .level-card.completed {
+      border-color: rgba(46, 213, 115, 0.5);
+      box-shadow: 0 4px 20px rgba(46, 213, 115, 0.15);
+    }
+
+    .level-card:active.unlocked {
+      transform: scale(0.92);
+    }
+
+    .level-number {
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .level-name {
+      font-size: 10px;
+      color: #888;
+      margin-top: 4px;
+      text-align: center;
+      padding: 0 2px;
+      line-height: 1.1;
+    }
+
+    .level-status {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      font-size: 14px;
+    }
+
+    /* ==================== 游戏界面 ==================== */
+    #gameScreen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      flex: 1;
+      min-height: 200px;
+      background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+    }
+
+    #backBtn {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      z-index: 100;
+    }
+
+    #backBtn:hover {
+      background: rgba(102, 126, 234, 0.4);
+      transform: scale(1.08);
+    }
+
+    #backBtn:active {
+      transform: scale(0.95);
+    }
+
+    #status {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(18px, 5vw, 24px);
+      font-weight: 600;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    .tip {
+      padding: 8px 12px;
+      font-size: clamp(12px, 3vw, 14px);
+      color: #e0e0e0;
+      background: rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(5px);
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    #controls {
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 16px;
+      width: 100%;
+      position: relative;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      font-size: 28px;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn.pressed {
+      transform: scale(0.88);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    #shootBtn {
+      background: linear-gradient(145deg, #e74c3c 0%, #c0392b 100%);
+      font-size: 22px;
+    }
+
+    #skillBtn {
+      position: absolute;
+      right: 20px;
+      top: -80px;
+      width: 68px;
+      height: 68px;
+      background: linear-gradient(145deg, #ff6b6b 0%, #ee5a24 100%);
+      font-size: 18px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <!-- 选关界面 -->
+  <div id="levelSelectScreen">
+    <h1>🦅 鹰眼术</h1>
+    <div class="subtitle">平台冒险游戏</div>
+    <div class="level-grid" id="levelGrid"></div>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div id="gameScreen">
+    <canvas id="gameCanvas"></canvas>
+    <button id="backBtn">←</button>
+    <div id="status"></div>
+    <div class="tip">←→移动 | ↑跳跃 | 🔫射击 | 🦅鹰眼术</div>
+    <div id="controls">
+      <div class="btn" id="left">⬅️</div>
+      <div class="btn" id="right">➡️</div>
+      <div class="btn" id="jump">⬆️</div>
+      <div class="btn" id="shootBtn">🔫</div>
+      <div class="btn" id="skillBtn">🦅</div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+
+    // ==================== 常量定义 ====================
+    const CONFIG = {
+      // 技能
+      REVEAL_RADIUS: 200,
+      REVEAL_DURATION: 500,
+      COOLDOWN_TIME: 3000,
+
+      // 物理
+      GRAVITY: 0.6,
+      JUMP_FORCE: -14,
+      JUMP_HOLD_FORCE: -0.3,
+      MAX_JUMP_HOLD_TIME: 200,
+
+      // 射击
+      BULLET_SPEED: 12,
+      BULLET_COOLDOWN: 300,
+      MAX_BULLETS: 10,
+      SNIPER_RANGE: 300,
+      SNIPER_COOLDOWN: 2000,
+
+      // 游戏
+      MAX_HEALTH: 5,
+      POISON_DAMAGE: 0.5,
+      MAX_SPEED: 8,
+      ACCELERATION: 0.8,
+      FRICTION: 0.85,
+      AIR_CONTROL: 0.5,
+      INVINCIBILITY_TIME: 1000,
+      INPUT_BUFFER_TIME: 100,
+      TRAP_ANIMATION_SPEED: 8,
+      MAX_LEVEL: 8,
+
+      // 积分
+      ENEMY_KILL_SCORE: 100,
+      SNIPER_KILL_SCORE: 200,
+      GOAL_BONUS: 500,
+      DAMAGE_PENALTY: 50,
+
+      // 存储
+      STORAGE_KEY: 'eagleEyeGame_completedLevels'
+    };
+
+    // 陷阱类型定义
+    const TRAP_TYPES = {
+      SPIKE: { emoji: '💀', damage: 2, color: '#ff4757', name: '尖刺陷阱' },
+      POISON: { emoji: '☠️', damage: 'poison', color: '#2ed573', name: '毒气陷阱' },
+      MOVING: { emoji: '⚠️', damage: 0, color: '#ffa502', name: '移动平台' }
+    };
+
+    // 敌人类型定义
+    const ENEMY_TYPES = {
+      patrol: { emoji: '👹', health: 1, damage: 1, score: CONFIG.ENEMY_KILL_SCORE, color: '#ff6b6b', name: '巡逻兵' },
+      flyer: { emoji: '🦇', health: 1, damage: 1, score: CONFIG.ENEMY_KILL_SCORE, color: '#48dbfb', name: '飞行怪' },
+      sniper: { emoji: '🎯', health: 2, damage: 2, score: CONFIG.SNIPER_KILL_SCORE, color: '#e74c3c', name: '狙击手' }
+    };
+
+    // ==================== 关卡数据 ====================
+    const LEVELS = {
+      1: {
+        name: "新手训练",
+        mapWidth: 1200,
+        platforms: [
+          { x: 0, w: 300, h: 20, type: 'ground' },
+          { x: 400, w: 250, h: 20, type: 'ground' },
+          { x: 750, w: 250, h: 20, type: 'ground' },
+          { x: 350, w: 100, h: 20, type: 'platform' },
+          { x: 550, w: 80, h: 20, type: 'platform' }
+        ],
+        traps: [
+          { x: 480, w: 32, type: 'SPIKE' },
+          { x: 830, w: 32, type: 'POISON' }
+        ],
+        enemies: [
+          { x: 450, speed: 1.5, range: 80, type: 'patrol' },
+          { x: 800, speed: 1.8, range: 70, type: 'patrol' }
+        ],
+        goal: { x: 1050 },
+        spawnX: 50
+      },
+      2: {
+        name: "中级挑战",
+        mapWidth: 1500,
+        platforms: [
+          { x: 0, w: 250, h: 20, type: 'ground' },
+          { x: 350, w: 200, h: 20, type: 'ground' },
+          { x: 650, w: 200, h: 20, type: 'ground' },
+          { x: 950, w: 250, h: 20, type: 'ground' },
+          { x: 1250, w: 250, h: 20, type: 'ground' },
+          { x: 150, w: 80, h: 20, type: 'platform' },
+          { x: 300, w: 80, h: 20, type: 'platform' },
+          { x: 450, w: 80, h: 20, type: 'platform' },
+          { x: 750, w: 80, h: 20, type: 'platform' },
+          { x: 900, w: 80, h: 20, type: 'platform' },
+          { x: 1050, w: 80, h: 20, type: 'platform' }
+        ],
+        traps: [
+          { x: 420, w: 32, type: 'SPIKE' },
+          { x: 730, w: 32, type: 'POISON' },
+          { x: 1020, w: 32, type: 'SPIKE' }
+        ],
+        enemies: [
+          { x: 400, speed: 1.8, range: 90, type: 'patrol' },
+          { x: 720, speed: 2, range: 80, type: 'patrol' },
+          { x: 1050, speed: 2.2, range: 70, type: 'patrol' },
+          { x: 1350, speed: 1.5, range: 80, type: 'patrol' }
+        ],
+        goal: { x: 1350 },
+        spawnX: 50
+      },
+      3: {
+        name: "狙击手前哨",
+        mapWidth: 1600,
+        platforms: [
+          { x: 0, w: 200, h: 20, type: 'ground' },
+          { x: 300, w: 180, h: 20, type: 'ground' },
+          { x: 580, w: 200, h: 20, type: 'ground' },
+          { x: 880, w: 220, h: 20, type: 'ground' },
+          { x: 1200, w: 250, h: 20, type: 'ground' },
+          { x: 1500, w: 100, h: 20, type: 'ground' },
+          { x: 120, w: 70, h: 20, type: 'platform' },
+          { x: 250, w: 70, h: 20, type: 'platform' },
+          { x: 400, w: 70, h: 20, type: 'platform' },
+          { x: 700, w: 70, h: 20, type: 'platform' },
+          { x: 830, w: 70, h: 20, type: 'platform' },
+          { x: 980, w: 70, h: 20, type: 'platform' },
+          { x: 1120, w: 70, h: 20, type: 'platform' },
+          { x: 1350, w: 70, h: 20, type: 'platform' }
+        ],
+        traps: [
+          { x: 380, w: 32, type: 'SPIKE' },
+          { x: 670, w: 32, type: 'POISON' },
+          { x: 970, w: 32, type: 'SPIKE' },
+          { x: 1300, w: 32, type: 'POISON' }
+        ],
+        enemies: [
+          { x: 350, speed: 2, range: 70, type: 'patrol' },
+          { x: 650, speed: 1.8, range: 80, type: 'patrol' },
+          { x: 950, speed: 2.2, range: 70, type: 'patrol' },
+          { x: 1250, speed: 2, range: 80, type: 'patrol' },
+          { x: 750, y: 80, speed: 1.5, range: 60, type: 'flyer' },
+          { x: 1100, y: 80, speed: 1.5, range: 60, type: 'flyer' }
+        ],
+        goal: { x: 1450 },
+        spawnX: 50
+      },
+      4: {
+        name: "蘑菇森林",
+        mapWidth: 1800,
+        platforms: [
+          { x: 0, w: 220, h: 20, type: 'ground' },
+          { x: 320, w: 180, h: 20, type: 'ground' },
+          { x: 600, w: 200, h: 20, type: 'ground' },
+          { x: 920, w: 220, h: 20, type: 'ground' },
+          { x: 1260, w: 200, h: 20, type: 'ground' },
+          { x: 1560, w: 240, h: 20, type: 'ground' },
+          { x: 140, w: 70, h: 20, type: 'platform' },
+          { x: 260, w: 70, h: 20, type: 'platform' },
+          { x: 450, w: 70, h: 20, type: 'platform' },
+          { x: 570, w: 70, h: 20, type: 'platform' },
+          { x: 780, w: 70, h: 20, type: 'platform' },
+          { x: 900, w: 70, h: 20, type: 'platform' },
+          { x: 1100, w: 70, h: 20, type: 'platform' },
+          { x: 1220, w: 70, h: 20, type: 'platform' },
+          { x: 1420, w: 70, h: 20, type: 'platform' },
+          { x: 1540, w: 70, h: 20, type: 'platform' },
+          { x: 1700, w: 70, h: 20, type: 'platform' }
+        ],
+        traps: [
+          { x: 400, w: 32, type: 'SPIKE' },
+          { x: 690, w: 32, type: 'POISON' },
+          { x: 1010, w: 32, type: 'SPIKE' },
+          { x: 1350, w: 32, type: 'POISON' }
+        ],
+        enemies: [
+          { x: 370, speed: 1.8, range: 75, type: 'patrol' },
+          { x: 660, speed: 2, range: 80, type: 'patrol' },
+          { x: 980, speed: 1.9, range: 75, type: 'patrol' },
+          { x: 1320, speed: 2.1, range: 80, type: 'patrol' },
+          { x: 1620, speed: 1.7, range: 90, type: 'patrol' },
+          { x: 850, y: 80, speed: 1.6, range: 60, type: 'flyer' },
+          { x: 1180, y: 80, speed: 1.6, range: 60, type: 'flyer' }
+        ],
+        goal: { x: 1650 },
+        spawnX: 50
+      },
+      5: {
+        name: "天空跳跃",
+        mapWidth: 2000,
+        platforms: [
+          { x: 0, w: 180, h: 20, type: 'ground' },
+          { x: 250, w: 80, h: 20, type: 'platform' },
+          { x: 380, w: 80, h: 20, type: 'platform' },
+          { x: 510, w: 80, h: 20, type: 'platform' },
+          { x: 640, w: 80, h: 20, type: 'platform' },
+          { x: 770, w: 80, h: 20, type: 'platform' },
+          { x: 900, w: 80, h: 20, type: 'platform' },
+          { x: 1030, w: 80, h: 20, type: 'platform' },
+          { x: 1160, w: 80, h: 20, type: 'platform' },
+          { x: 1290, w: 80, h: 20, type: 'platform' },
+          { x: 1420, w: 80, h: 20, type: 'platform' },
+          { x: 1550, w: 80, h: 20, type: 'platform' },
+          { x: 1680, w: 80, h: 20, type: 'platform' },
+          { x: 1810, w: 190, h: 20, type: 'ground' }
+        ],
+        traps: [],
+        enemies: [
+          { x: 320, y: 60, speed: 1.8, range: 50, type: 'flyer' },
+          { x: 580, y: 60, speed: 1.8, range: 50, type: 'flyer' },
+          { x: 840, y: 60, speed: 2, range: 50, type: 'flyer' },
+          { x: 1100, y: 60, speed: 2, range: 50, type: 'flyer' },
+          { x: 1360, y: 60, speed: 2.2, range: 50, type: 'flyer' },
+          { x: 1620, y: 60, speed: 2.2, range: 50, type: 'flyer' }
+        ],
+        goal: { x: 1850 },
+        spawnX: 50
+      },
+      6: {
+        name: "陷阱迷宫",
+        mapWidth: 1800,
+        platforms: [
+          { x: 0, w: 220, h: 20, type: 'ground' },
+          { x: 320, w: 100, h: 20, type: 'ground' },
+          { x: 520, w: 100, h: 20, type: 'ground' },
+          { x: 720, w: 100, h: 20, type: 'ground' },
+          { x: 920, w: 100, h: 20, type: 'ground' },
+          { x: 1120, w: 100, h: 20, type: 'ground' },
+          { x: 1320, w: 100, h: 20, type: 'ground' },
+          { x: 1520, w: 280, h: 20, type: 'ground' },
+          { x: 100, w: 70, h: 20, type: 'platform' },
+          { x: 200, w: 70, h: 20, type: 'platform' },
+          { x: 380, w: 70, h: 20, type: 'platform' },
+          { x: 480, w: 70, h: 20, type: 'platform' },
+          { x: 580, w: 70, h: 20, type: 'platform' },
+          { x: 680, w: 70, h: 20, type: 'platform' },
+          { x: 780, w: 70, h: 20, type: 'platform' },
+          { x: 880, w: 70, h: 20, type: 'platform' },
+          { x: 980, w: 70, h: 20, type: 'platform' },
+          { x: 1080, w: 70, h: 20, type: 'platform' },
+          { x: 1180, w: 70, h: 20, type: 'platform' },
+          { x: 1280, w: 70, h: 20, type: 'platform' },
+          { x: 1380, w: 70, h: 20, type: 'platform' },
+          { x: 1480, w: 70, h: 20, type: 'platform' },
+          { x: 1580, w: 70, h: 20, type: 'platform' }
+        ],
+        traps: [
+          { x: 160, w: 32, type: 'SPIKE' },
+          { x: 580, w: 32, type: 'POISON' },
+          { x: 980, w: 32, type: 'SPIKE' },
+          { x: 1380, w: 32, type: 'POISON' }
+        ],
+        enemies: [
+          { x: 350, speed: 2, range: 70, type: 'patrol' },
+          { x: 550, speed: 2, range: 70, type: 'patrol' },
+          { x: 750, speed: 2, range: 70, type: 'patrol' },
+          { x: 950, speed: 2, range: 70, type: 'patrol' },
+          { x: 1150, speed: 2, range: 70, type: 'patrol' },
+          { x: 1350, speed: 2, range: 70, type: 'patrol' },
+          { x: 1600, speed: 2, range: 70, type: 'patrol' },
+          { x: 750, y: 80, speed: 1.8, range: 50, type: 'flyer' },
+          { x: 1200, y: 80, speed: 1.8, range: 50, type: 'flyer' }
+        ],
+        goal: { x: 1650 },
+        spawnX: 50
+      },
+      7: {
+        name: "魔鬼城堡",
+        mapWidth: 2100,
+        platforms: [
+          { x: 0, w: 180, h: 20, type: 'ground' },
+          { x: 280, w: 80, h: 20, type: 'platform' },
+          { x: 420, w: 80, h: 20, type: 'platform' },
+          { x: 560, w: 80, h: 20, type: 'platform' },
+          { x: 700, w: 80, h: 20, type: 'platform' },
+          { x: 840, w: 80, h: 20, type: 'platform' },
+          { x: 980, w: 80, h: 20, type: 'platform' },
+          { x: 1120, w: 80, h: 20, type: 'platform' },
+          { x: 1260, w: 80, h: 20, type: 'platform' },
+          { x: 1400, w: 80, h: 20, type: 'platform' },
+          { x: 1540, w: 80, h: 20, type: 'platform' },
+          { x: 1680, w: 80, h: 20, type: 'platform' },
+          { x: 1820, w: 80, h: 20, type: 'platform' },
+          { x: 1960, w: 140, h: 20, type: 'ground' },
+          { x: 350, w: 60, h: 20, type: 'platform' },
+          { x: 490, w: 60, h: 20, type: 'platform' },
+          { x: 630, w: 60, h: 20, type: 'platform' },
+          { x: 770, w: 60, h: 20, type: 'platform' },
+          { x: 910, w: 60, h: 20, type: 'platform' },
+          { x: 1050, w: 60, h: 20, type: 'platform' },
+          { x: 1190, w: 60, h: 20, type: 'platform' },
+          { x: 1330, w: 60, h: 20, type: 'platform' },
+          { x: 1470, w: 60, h: 20, type: 'platform' },
+          { x: 1610, w: 60, h: 20, type: 'platform' },
+          { x: 1750, w: 60, h: 20, type: 'platform' },
+          { x: 1890, w: 60, h: 20, type: 'platform' }
+        ],
+        traps: [
+          { x: 120, w: 32, type: 'SPIKE' },
+          { x: 310, w: 32, type: 'POISON' },
+          { x: 490, w: 32, type: 'SPIKE' },
+          { x: 670, w: 32, type: 'POISON' },
+          { x: 850, w: 32, type: 'SPIKE' },
+          { x: 1030, w: 32, type: 'POISON' },
+          { x: 1210, w: 32, type: 'SPIKE' },
+          { x: 1390, w: 32, type: 'POISON' },
+          { x: 1570, w: 32, type: 'SPIKE' },
+          { x: 1750, w: 32, type: 'POISON' }
+        ],
+        enemies: [
+          { x: 320, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 500, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 680, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 860, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 1040, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 1220, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 1400, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 1580, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 1760, speed: 2.3, range: 60, type: 'patrol' },
+          { x: 450, y: 80, speed: 2, range: 50, type: 'flyer' },
+          { x: 750, y: 80, speed: 2, range: 50, type: 'flyer' },
+          { x: 1050, y: 80, speed: 2, range: 50, type: 'flyer' },
+          { x: 1350, y: 80, speed: 2, range: 50, type: 'flyer' },
+          { x: 1650, y: 80, speed: 2, range: 50, type: 'flyer' }
+        ],
+        goal: { x: 1950 },
+        spawnX: 50
+      },
+      8: {
+        name: "最终决战",
+        mapWidth: 2300,
+        platforms: [
+          { x: 0, w: 200, h: 20, type: 'ground' },
+          { x: 300, w: 80, h: 20, type: 'platform' },
+          { x: 420, w: 80, h: 20, type: 'platform' },
+          { x: 540, w: 80, h: 20, type: 'platform' },
+          { x: 660, w: 80, h: 20, type: 'platform' },
+          { x: 780, w: 80, h: 20, type: 'platform' },
+          { x: 900, w: 80, h: 20, type: 'platform' },
+          { x: 1020, w: 80, h: 20, type: 'platform' },
+          { x: 1140, w: 80, h: 20, type: 'platform' },
+          { x: 1260, w: 80, h: 20, type: 'platform' },
+          { x: 1380, w: 80, h: 20, type: 'platform' },
+          { x: 1500, w: 80, h: 20, type: 'platform' },
+          { x: 1620, w: 80, h: 20, type: 'platform' },
+          { x: 1740, w: 80, h: 20, type: 'platform' },
+          { x: 1860, w: 80, h: 20, type: 'platform' },
+          { x: 1980, w: 80, h: 20, type: 'platform' },
+          { x: 2100, w: 200, h: 20, type: 'ground' },
+          { x: 350, w: 60, h: 20, type: 'platform' },
+          { x: 470, w: 60, h: 20, type: 'platform' },
+          { x: 590, w: 60, h: 20, type: 'platform' },
+          { x: 710, w: 60, h: 20, type: 'platform' },
+          { x: 830, w: 60, h: 20, type: 'platform' },
+          { x: 950, w: 60, h: 20, type: 'platform' },
+          { x: 1070, w: 60, h: 20, type: 'platform' },
+          { x: 1190, w: 60, h: 20, type: 'platform' },
+          { x: 1310, w: 60, h: 20, type: 'platform' },
+          { x: 1430, w: 60, h: 20, type: 'platform' },
+          { x: 1550, w: 60, h: 20, type: 'platform' },
+          { x: 1670, w: 60, h: 20, type: 'platform' },
+          { x: 1790, w: 60, h: 20, type: 'platform' },
+          { x: 1910, w: 60, h: 20, type: 'platform' },
+          { x: 2030, w: 60, h: 20, type: 'platform' }
+        ],
+        traps: [
+          { x: 150, w: 32, type: 'SPIKE' },
+          { x: 360, w: 32, type: 'POISON' },
+          { x: 480, w: 32, type: 'SPIKE' },
+          { x: 600, w: 32, type: 'POISON' },
+          { x: 720, w: 32, type: 'SPIKE' },
+          { x: 840, w: 32, type: 'POISON' },
+          { x: 960, w: 32, type: 'SPIKE' },
+          { x: 1080, w: 32, type: 'POISON' },
+          { x: 1200, w: 32, type: 'SPIKE' },
+          { x: 1320, w: 32, type: 'POISON' },
+          { x: 1440, w: 32, type: 'SPIKE' },
+          { x: 1560, w: 32, type: 'POISON' },
+          { x: 1680, w: 32, type: 'SPIKE' },
+          { x: 1800, w: 32, type: 'POISON' }
+        ],
+        enemies: [
+          { x: 330, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 450, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 570, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 690, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 810, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 930, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 1050, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 1170, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 1290, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 1410, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 1530, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 1650, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 1770, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 1890, speed: 2.5, range: 50, type: 'patrol' },
+          { x: 500, y: 80, speed: 2.2, range: 40, type: 'flyer' },
+          { x: 800, y: 80, speed: 2.2, range: 40, type: 'flyer' },
+          { x: 1100, y: 80, speed: 2.2, range: 40, type: 'flyer' },
+          { x: 1400, y: 80, speed: 2.2, range: 40, type: 'flyer' },
+          { x: 1700, y: 80, speed: 2.2, range: 40, type: 'flyer' }
+        ],
+        goal: { x: 2050 },
+        spawnX: 50
+      }
+    };
+
+    // ==================== 全局变量 ====================
+    let canvas, ctx, statusEl, levelSelectScreen, levelGrid, backBtn;
+    let leftBtn, rightBtn, jumpBtn, skillBtn;
+
+    // ==================== 游戏状态 ====================
+    const GameState = {
+      currentLevel: 1,
+      isRunning: false,
+      gameOver: false,
+      win: false,
+
+      player: null,
+      platforms: [],
+      traps: [],
+      enemies: [],
+      bullets: [],
+      goal: null,
+      mapWidth: 0,
+
+      // 技能状态
+      revealActive: false,
+      revealEndTime: 0,
+      cooldownEndTime: 0,
+
+      // 射击状态
+      lastShootTime: 0,
+      facingRight: true,
+
+      // 相机
+      cameraOffset: 0,
+
+      // 输入状态
+      input: { left: false, right: false, jump: false, shoot: false },
+      jumpBufferTime: 0,
+      jumpHoldTime: 0,
+
+      // 积分
+      score: 0,
+      maxScore: 0,
+      highScores: {},
+
+      // 进度
+      completedLevels: new Set(),
+
+      // 其他
+      stars: [],
+      lastTime: 0
+    };
+
+    // ==================== 存储管理 ====================
+    const Storage = {
+      load() {
+        try {
+          const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+          if (saved) {
+            GameState.completedLevels = new Set(JSON.parse(saved));
+          }
+        } catch (e) {
+          GameState.completedLevels = new Set();
+        }
+      },
+
+      save() {
+        try {
+          localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify([...GameState.completedLevels]));
+        } catch (e) {}
+      },
+
+      getUnlockedLevel() {
+        const maxCompleted = Math.max(...GameState.completedLevels, 0);
+        return Math.min(maxCompleted + 1, CONFIG.MAX_LEVEL);
+      }
+    };
+
+    // ==================== UI 管理 ====================
+    const UI = {
+      resizeCanvas() {
+        // 使用多种方式确保画布有正确大小
+        const controls = document.getElementById('controls');
+        let height = 300; // 默认值
+
+        if (controls) {
+          height = controls.offsetTop - canvas.offsetTop;
+        }
+
+        // 确保高度合理
+        height = Math.max(height, 200);
+        height = Math.min(height, window.innerHeight - 100);
+
+        canvas.width = window.innerWidth;
+        canvas.height = height;
+
+        console.log('Canvas resized:', canvas.width, 'x', canvas.height);
+      },
+
+      showLevelSelect() {
+        GameState.isRunning = false;
+        levelSelectScreen.classList.remove('hidden');
+        backBtn.style.display = 'none';
+        this.buildLevelGrid();
+      },
+
+      hideLevelSelect() {
+        GameState.isRunning = true;
+        levelSelectScreen.classList.add('hidden');
+        backBtn.style.display = 'flex';
+      },
+
+      buildLevelGrid() {
+        levelGrid.innerHTML = '';
+        const unlockedLevel = Storage.getUnlockedLevel();
+
+        for (let i = 1; i <= CONFIG.MAX_LEVEL; i++) {
+          const levelData = LEVELS[i];
+          const isUnlocked = i <= unlockedLevel;
+          const isCompleted = GameState.completedLevels.has(i);
+
+          const card = document.createElement('div');
+          card.className = `level-card ${isUnlocked ? 'unlocked' : 'locked'} ${isCompleted ? 'completed' : ''}`;
+          card.innerHTML = `
+            <div class="level-number">${isUnlocked ? i : '🔒'}</div>
+            <div class="level-name">${isUnlocked ? levelData.name : '未解锁'}</div>
+            ${isCompleted ? '<div class="level-status">✅</div>' : ''}
+          `;
+
+          if (isUnlocked) {
+            card.addEventListener('click', () => Game.startLevel(i));
+            card.addEventListener('touchstart', () => Game.startLevel(i));
+          }
+
+          levelGrid.appendChild(card);
+        }
+      },
+
+      updateButtonStyles() {
+        leftBtn.classList.toggle('pressed', GameState.input.left);
+        rightBtn.classList.toggle('pressed', GameState.input.right);
+        jumpBtn.classList.toggle('pressed', GameState.input.jump);
+      },
+
+      showStatus(text) {
+        statusEl.textContent = text;
+        statusEl.style.opacity = '1';
+        setTimeout(() => statusEl.style.opacity = '0', 1000);
+      }
+    };
+
+    // ==================== 输入处理 ====================
+    const Input = {
+      init() {
+        // 触摸/鼠标按钮事件
+        this.bindButton(leftBtn, 'left');
+        this.bindButton(rightBtn, 'right');
+        this.bindButton(jumpBtn, 'jump');
+
+        // 射击按钮
+        const shootBtn = document.getElementById('shootBtn');
+        shootBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          this.setDirection('shoot', true);
+        });
+        shootBtn.addEventListener('pointerup', () => this.setDirection('shoot', false));
+        shootBtn.addEventListener('pointerleave', () => this.setDirection('shoot', false));
+
+        // 技能按钮
+        skillBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          Game.useRevealSkill();
+        });
+
+        // 返回按钮
+        backBtn.addEventListener('click', () => UI.showLevelSelect());
+
+        // 键盘支持
+        document.addEventListener('keydown', (e) => this.handleKey(e, true));
+        document.addEventListener('keyup', (e) => this.handleKey(e, false));
+
+        // 窗口大小
+        window.addEventListener('resize', () => UI.resizeCanvas());
+      },
+
+      bindButton(btn, direction) {
+        btn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          this.setDirection(direction, true);
+        });
+        btn.addEventListener('pointerup', () => this.setDirection(direction, false));
+        btn.addEventListener('pointerleave', () => this.setDirection(direction, false));
+      },
+
+      setDirection(direction, active) {
+        GameState.input[direction] = active;
+        if (direction === 'jump' && active) {
+          GameState.jumpBufferTime = Date.now();
+        }
+        UI.updateButtonStyles();
+      },
+
+      handleKey(e, pressed) {
+        if (!GameState.isRunning) return;
+        const key = e.key.toLowerCase();
+        const keys = { left: ['arrowleft', 'a'], right: ['arrowright', 'd'], jump: ['arrowup', 'w', ' '], shoot: ['j', 'f'] };
+        for (const [dir, keyList] of Object.entries(keys)) {
+          if (keyList.includes(key)) {
+            this.setDirection(dir, pressed);
+          }
+        }
+      }
+    };
+
+    // ==================== 游戏逻辑 ====================
+    const Game = {
+      initDOM() {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        statusEl = document.getElementById('status');
+        levelSelectScreen = document.getElementById('levelSelectScreen');
+        levelGrid = document.getElementById('levelGrid');
+        backBtn = document.getElementById('backBtn');
+        leftBtn = document.getElementById('left');
+        rightBtn = document.getElementById('right');
+        jumpBtn = document.getElementById('jump');
+        skillBtn = document.getElementById('skillBtn');
+      },
+
+      init() {
+        this.initDOM();
+        // 初始化
+        Storage.load();
+        // 立即调整画布大小
+        UI.resizeCanvas();
+        this.generateStars();
+        Input.init();
+        UI.showLevelSelect();
+        // 立即启动游戏循环
+        window.startGameLoop = true;
+      },
+
+      generateStars() {
+        GameState.stars = [];
+        for (let i = 0; i < 50; i++) {
+          GameState.stars.push({
+            x: Math.random() * 2000,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 3 + 1,
+            speed: Math.random() * 0.5 + 0.2
+          });
+        }
+      },
+
+      startLevel(level) {
+        UI.hideLevelSelect();
+        // 立即调整画布大小
+        UI.resizeCanvas();
+        this.generateStars();
+        this.loadLevel(level);
+      },
+
+      loadLevel(level) {
+        const data = LEVELS[level];
+        GameState.currentLevel = level;
+        GameState.mapWidth = data.mapWidth;
+        GameState.gameOver = false;
+        GameState.win = false;
+        GameState.revealActive = false;
+        GameState.cooldownEndTime = 0;
+        GameState.jumpBufferTime = 0;
+        GameState.jumpHoldTime = 0;
+        GameState.cameraOffset = 0;
+        GameState.lastShootTime = 0;
+        GameState.bullets = [];
+        GameState.score = 0;
+        GameState.facingRight = true;
+
+        const groundY = canvas.height - 20;
+
+        // 玩家
+        GameState.player = {
+          x: data.spawnX,
+          y: groundY - 100,
+          w: 32,
+          h: 32,
+          speed: 6,
+          velX: 0,
+          velY: 0,
+          onGround: false,
+          isJumping: false,
+          health: CONFIG.MAX_HEALTH,
+          invincibleTime: 0,
+          lastPoisonDamage: 0
+        };
+
+        // 平台
+        GameState.platforms = data.platforms.map(p => ({
+          ...p,
+          y: p.type === 'ground' ? groundY : groundY - 120
+        }));
+
+        // 陷阱
+        GameState.traps = data.traps.map(t => ({
+          ...t,
+          h: 32,
+          y: groundY,
+          state: 'hidden',
+          animationProgress: 0
+        }));
+
+        // 敌人
+        GameState.enemies = data.enemies.map(e => ({
+          w: 24,
+          h: 24,
+          direction: 1,
+          startX: e.x,
+          y: e.type === 'flyer' ? e.y : groundY - 30,
+          health: e.type ? (ENEMY_TYPES[e.type] || ENEMY_TYPES.patrol).health : 1,
+          maxHealth: e.type ? (ENEMY_TYPES[e.type] || ENEMY_TYPES.patrol).health : 1,
+          lastShootTime: 0,
+          ...e
+        }));
+
+        // 终点
+        GameState.goal = { ...data.goal, w: 32, h: 32, y: groundY - 30 };
+
+        // 清除输入
+        GameState.input = { left: false, right: false, jump: false, shoot: false };
+        UI.updateButtonStyles();
+      },
+
+      useRevealSkill() {
+        if (!GameState.isRunning) return;
+        const now = Date.now();
+        if (now < GameState.cooldownEndTime || GameState.revealActive) return;
+
+        GameState.revealActive = true;
+        GameState.revealEndTime = now + CONFIG.REVEAL_DURATION;
+        GameState.cooldownEndTime = now + CONFIG.COOLDOWN_TIME;
+        UI.showStatus("🦅 鹰眼术激活！");
+      }
+    };
+
+    // ==================== 物理引擎 ====================
+    const Physics = {
+      updatePlayer(dt) {
+        const p = GameState.player;
+
+        // 水平移动（带加速度）
+        const targetVelX = (GameState.input.left ? -p.speed : 0) + (GameState.input.right ? p.speed : 0);
+        const controlFactor = p.onGround ? 1 : CONFIG.AIR_CONTROL;
+        p.velX += (targetVelX - p.velX) * (p.onGround ? CONFIG.ACCELERATION : CONFIG.ACCELERATION * controlFactor);
+        p.velX *= CONFIG.FRICTION;
+        p.velX = Math.max(-CONFIG.MAX_SPEED, Math.min(p.velX, CONFIG.MAX_SPEED));
+
+        // 跳跃（带缓冲和长按）
+        const now = Date.now();
+        if (p.onGround && GameState.input.jump && now - GameState.jumpBufferTime < CONFIG.INPUT_BUFFER_TIME) {
+          p.velY = CONFIG.JUMP_FORCE;
+          p.onGround = false;
+          p.isJumping = true;
+          GameState.jumpHoldTime = now;
+          GameState.jumpBufferTime = 0;
+        }
+
+        if (GameState.input.jump && p.isJumping && now - GameState.jumpHoldTime < CONFIG.MAX_JUMP_HOLD_TIME) {
+          p.velY += CONFIG.JUMP_HOLD_FORCE;
+        }
+
+        // 更新朝向和射击
+        if (GameState.input.right) GameState.facingRight = true;
+        if (GameState.input.left) GameState.facingRight = false;
+        if (GameState.input.shoot) this.shoot();
+
+        // 重力
+        p.velY += CONFIG.GRAVITY;
+
+        // 移动
+        p.x += p.velX;
+        p.y += p.velY;
+
+        // 边界
+        p.x = Math.max(0, Math.min(p.x, GameState.mapWidth - p.w));
+
+        // 平台碰撞
+        p.onGround = false;
+        for (const platform of GameState.platforms) {
+          if (this.checkCollision(p, platform)) {
+            const overlap = this.getOverlap(p, platform);
+            if (overlap.min === overlap.top && p.velY > 0) {
+              p.y = platform.y - p.h;
+              p.velY = 0;
+              p.onGround = true;
+              p.isJumping = false;
+            } else if (overlap.min === overlap.bottom && p.velY < 0) {
+              p.y = platform.y + platform.h;
+              p.velY = 0;
+            } else if (overlap.min === overlap.left) {
+              p.x = platform.x - p.w;
+              p.velX = 0;
+            } else if (overlap.min === overlap.right) {
+              p.x = platform.x + platform.w;
+              p.velX = 0;
+            }
+          }
+        }
+
+        // 死亡检测
+        if (p.y > canvas.height + 50) {
+          GameState.gameOver = true;
+        }
+      },
+
+      updateTraps() {
+        const now = Date.now();
+        const p = GameState.player;
+
+        for (const trap of GameState.traps) {
+          if (trap.state === 'hidden') {
+            const centerX = p.x + p.w / 2;
+            const bottom = p.y + p.h;
+            if (centerX >= trap.x && centerX <= trap.x + trap.w &&
+                bottom >= trap.y - 5 && bottom <= trap.y + 10 && p.onGround) {
+              trap.state = 'activating';
+            }
+          }
+
+          if (trap.state === 'activating') {
+            trap.animationProgress += CONFIG.TRAP_ANIMATION_SPEED;
+            if (trap.animationProgress >= trap.h) {
+              trap.animationProgress = trap.h;
+              trap.state = 'active';
+              const type = TRAP_TYPES[trap.type];
+              if (type.damage !== 'poison' && type.damage > 0) {
+                this.damagePlayer(type.damage);
+              } else if (type.damage === 'poison') {
+                p.lastPoisonDamage = now;
+              }
+            }
+          }
+
+          if (trap.state === 'active' && trap.type === 'POISON') {
+            if (now - p.lastPoisonDamage > 1000) {
+              this.damagePlayer(CONFIG.POISON_DAMAGE);
+              p.lastPoisonDamage = now;
+            }
+          }
+        }
+      },
+
+      updateEnemies() {
+        const now = Date.now();
+        const p = GameState.player;
+
+        for (const enemy of GameState.enemies) {
+          enemy.x += enemy.speed * enemy.direction;
+          if (enemy.x > enemy.startX + enemy.range || enemy.x < enemy.startX - enemy.range) {
+            enemy.direction *= -1;
+          }
+
+          if (this.checkCollision(p, enemy) && now > p.invincibleTime) {
+            this.damagePlayer(1);
+            p.velY = CONFIG.JUMP_FORCE * 0.7;
+            const knockback = (p.x < enemy.x ? -CONFIG.MAX_SPEED * 0.8 : CONFIG.MAX_SPEED * 0.8);
+            p.velX = knockback;
+          }
+        }
+      },
+
+      damagePlayer(amount) {
+        const p = GameState.player;
+        p.health -= amount;
+        p.invincibleTime = Date.now() + CONFIG.INVINCIBILITY_TIME;
+        if (p.health <= 0) {
+          p.health = 0;
+          GameState.gameOver = true;
+        }
+      },
+
+      checkCollision(a, b) {
+        return a.x < b.x + b.w && a.x + a.w > b.x &&
+               a.y < b.y + b.h && a.y + a.h > b.y;
+      },
+
+      getOverlap(a, b) {
+        const left = (a.x + a.w) - b.x;
+        const right = (b.x + b.w) - a.x;
+        const top = (a.y + a.h) - b.y;
+        const bottom = (b.y + b.h) - a.y;
+        const min = Math.min(left, right, top, bottom);
+        return { left, right, top, bottom, min };
+      },
+
+      updateCamera() {
+        const target = GameState.player.x - canvas.width / 2;
+        const max = Math.max(0, GameState.mapWidth - canvas.width);
+        GameState.cameraOffset += (target - GameState.cameraOffset) * 0.1;
+        GameState.cameraOffset = Math.max(0, Math.min(GameState.cameraOffset, max));
+      }
+    };
+
+    // ==================== 渲染器 ====================
+    const Renderer = {
+      render() {
+        // 确保画布有正确大小
+        if (canvas.width === 0 || canvas.height === 0) {
+          UI.resizeCanvas();
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 背景填充（确保画布有颜色）
+        ctx.fillStyle = '#0f0c29';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 如果游戏没有运行，只画背景
+        if (!GameState.player) {
+          return;
+        }
+
+        // 背景
+        this.drawBackground();
+        this.drawStars();
+
+        // 游戏元素
+        this.drawPlatforms();
+        this.drawGoal();
+        this.drawTraps();
+        this.drawEnemies();
+        this.drawPlayer();
+
+        // 鹰眼术范围（在玩家之后绘制）
+        this.drawRevealRange();
+
+        // UI
+        this.drawHealthBar();
+        this.drawCooldown();
+        this.drawGameStatus();
+
+        // 检查技能状态
+        if (GameState.revealActive && Date.now() > GameState.revealEndTime) {
+          GameState.revealActive = false;
+        }
+      },
+
+      drawBackground() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      },
+
+      drawStars() {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        for (const star of GameState.stars) {
+          const x = star.x - GameState.cameraOffset * star.speed;
+          if (x > -10 && x < canvas.width + 10) {
+            ctx.fillRect(x, star.y, star.size, star.size);
+          }
+        }
+      },
+
+      drawPlatforms() {
+        for (const p of GameState.platforms) {
+          ctx.fillStyle = p.type === 'ground' ? '#4a5568' : '#636e72';
+          ctx.fillRect(p.x - GameState.cameraOffset, p.y, p.w, p.h);
+          ctx.fillStyle = p.type === 'ground' ? '#718096' : '#a4b0be';
+          ctx.fillRect(p.x - GameState.cameraOffset, p.y, p.w, 3);
+        }
+      },
+
+      drawGoal() {
+        const g = GameState.goal;
+        ctx.font = '32px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🏆', g.x - GameState.cameraOffset + g.w/2, g.y + g.h/2);
+      },
+
+      drawTraps() {
+        const p = GameState.player;
+        for (const trap of GameState.traps) {
+          const dist = Math.sqrt((p.x - trap.x)**2 + (p.y - trap.y)**2);
+          const inRange = dist <= CONFIG.REVEAL_RADIUS;
+          const type = TRAP_TYPES[trap.type];
+          const y = trap.y - trap.animationProgress;
+
+          // 鹰眼术激活时，范围内的陷阱始终可见
+          if (GameState.revealActive && inRange) {
+            ctx.fillStyle = type.color + '40';
+            ctx.fillRect(trap.x - GameState.cameraOffset, y, trap.w, trap.h);
+            ctx.strokeStyle = type.color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(trap.x - GameState.cameraOffset, y, trap.w, trap.h);
+            ctx.font = '20px Arial';
+            ctx.fillStyle = 'white';
+            ctx.fillText(type.emoji, trap.x - GameState.cameraOffset + trap.w/2, y + trap.h/2);
+            ctx.font = '12px Arial';
+            ctx.fillText(type.name, trap.x - GameState.cameraOffset + trap.w/2, y - 10);
+          } else if (trap.state !== 'hidden') {
+            // 陷阱激活后正常显示
+            ctx.font = '24px Arial';
+            ctx.fillStyle = type.color;
+            ctx.fillText(type.emoji, trap.x - GameState.cameraOffset + trap.w/2, y + trap.h/2);
+          }
+        }
+      },
+
+      drawRevealRange() {
+        if (!GameState.revealActive) return;
+
+        const p = GameState.player;
+        const cx = p.x - GameState.cameraOffset + p.w / 2;
+        const cy = p.y + p.h / 2;
+
+        // 绘制范围圆
+        ctx.beginPath();
+        ctx.arc(cx, cy, CONFIG.REVEAL_RADIUS, 0, Math.PI * 2);
+
+        // 渐变填充
+        const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, CONFIG.REVEAL_RADIUS);
+        gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+        gradient.addColorStop(0.7, 'rgba(255, 215, 0, 0.15)');
+        gradient.addColorStop(1, 'rgba(255, 215, 0, 0.05)');
+
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // 边框
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 脉冲效果
+        const pulse = Math.sin(Date.now() / 100) * 5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, CONFIG.REVEAL_RADIUS + pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      },
+
+      drawEnemies() {
+        for (const e of GameState.enemies) {
+          ctx.font = '24px Arial';
+          ctx.fillStyle = e.type === 'patrol' ? '#ff6b6b' : '#48dbfb';
+          const emoji = e.type === 'patrol' ? '👹' : '🦇';
+          ctx.fillText(emoji, e.x - GameState.cameraOffset + e.w/2, e.y + e.h/2);
+        }
+      },
+
+      drawPlayer() {
+        const p = GameState.player;
+        const now = Date.now();
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        let emoji = '🧙‍♂️';
+        if (GameState.win) emoji = '👑';
+        else if (GameState.gameOver) emoji = '😵';
+
+        if (now < p.invincibleTime) {
+          const blink = Math.floor((now - (p.invincibleTime - CONFIG.INVINCIBILITY_TIME)) / 100) % 2;
+          if (blink === 0) ctx.globalAlpha = 0.5;
+        }
+
+        ctx.fillStyle = 'white';
+        ctx.fillText(emoji, p.x - GameState.cameraOffset + p.w/2, p.y + p.h/2);
+        ctx.globalAlpha = 1.0;
+      },
+
+      drawHealthBar() {
+        const p = GameState.player;
+        const w = 120, h = 20, x = 20, y = 20;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(x, y, w, h);
+
+        const healthW = (p.health / CONFIG.MAX_HEALTH) * w;
+        ctx.fillStyle = p.health > 2 ? '#2ed573' : p.health > 1 ? '#ffa502' : '#ff4757';
+        ctx.fillRect(x, y, healthW, h);
+
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+
+        ctx.fillStyle = 'white';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`HP: ${Math.ceil(p.health)}/${CONFIG.MAX_HEALTH}`, x + w/2, y + h/2 + 2);
+      },
+
+      drawCooldown() {
+        const now = Date.now();
+        const remaining = Math.max(0, GameState.cooldownEndTime - now);
+        const ratio = remaining / CONFIG.COOLDOWN_TIME;
+        const x = canvas.width - 85, y = 20, r = 30;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (ratio > 0) {
+          ctx.strokeStyle = '#ff6b6b';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(x, y, r, -Math.PI/2, -Math.PI/2 + Math.PI * 2 * (1 - ratio));
+          ctx.stroke();
+        }
+
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🦅', x, y);
+      },
+
+      drawGameStatus() {
+        if (GameState.gameOver || GameState.win) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillRect(0, canvas.height/2 - 30, canvas.width, 60);
+          ctx.fillStyle = 'white';
+          ctx.font = '28px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(
+            GameState.gameOver ? '💀 游戏结束！' : `🎉 恭喜通关${GameState.currentLevel}关！`,
+            canvas.width / 2,
+            canvas.height / 2
+          );
+          ctx.font = '18px Arial';
+          ctx.fillText('点击返回选关', canvas.width / 2, canvas.height / 2 + 30);
+        }
+      }
+    };
+
+    // ==================== 游戏循环 ====================
+    function gameLoop(timestamp) {
+      const dt = timestamp - GameState.lastTime;
+      GameState.lastTime = timestamp;
+
+      if (GameState.isRunning && !GameState.gameOver && !GameState.win) {
+        Physics.updatePlayer(dt);
+        Physics.updateTraps();
+        Physics.updateEnemies();
+        Physics.updateCamera();
+
+        // 胜利检测
+        if (Physics.checkCollision(GameState.player, GameState.goal)) {
+          GameState.win = true;
+          GameState.completedLevels.add(GameState.currentLevel);
+          Storage.save();
+        }
+      }
+
+      Renderer.render();
+
+      // 游戏结束点击返回
+      if ((GameState.gameOver || GameState.win) && !Renderer.gameEndClickBound) {
+        Renderer.gameEndClickBound = true;
+        const handler = () => UI.showLevelSelect();
+        canvas.addEventListener('click', handler, { once: true });
+        canvas.addEventListener('touchstart', handler, { once: true });
+      } else if (!(GameState.gameOver || GameState.win)) {
+        Renderer.gameEndClickBound = false;
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ==================== 启动 ====================
+    document.addEventListener('DOMContentLoaded', () => {
+      Game.init();
+      // 立即启动游戏循环
+      requestAnimationFrame(gameLoop);
+    });
+  </script>
+</body>
+</html>
