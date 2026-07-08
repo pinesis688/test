@@ -33,8 +33,11 @@ h1{font-size:22px;font-weight:700;letter-spacing:3px;text-transform:uppercase;co
 .diff-tab.active{background:rgba(255,255,255,.9);color:#222}
 .diff-tab:not(.active):hover{background:rgba(255,255,255,.3)}
 .bottom-actions{position:absolute;bottom:70px;left:0;right:0;display:flex;gap:14px;padding:0 18px;z-index:5}
-.action-card{flex:1;height:96px;border-radius:22px;background:rgba(255,255,255,.55);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.4);box-shadow:0 4px 18px rgba(0,0,0,.18);display:flex;flex-direction:column;justify-content:center;padding:0 18px;cursor:pointer;transition:transform .15s;color:#222}
+.action-card{flex:1;height:96px;border-radius:22px;background:rgba(255,255,255,.55);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.4);box-shadow:0 4px 18px rgba(0,0,0,.18);display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 18px;cursor:pointer;transition:transform .15s;color:#222}
 .action-card:active{transform:scale(.97)}
+.action-card.primary{background:linear-gradient(135deg,#6aaa64 0%,#538d4e 100%);color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:0 6px 20px rgba(83,141,78,.45)}
+.action-card.primary .action-label{font-size:24px;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.2)}
+.action-card.primary .action-count{color:#fff;font-size:14px;opacity:.9;margin-top:4px}
 .action-label{font-size:22px;font-weight:700;color:#222}
 .action-count{font-size:18px;font-weight:700;color:#ff6b1a;margin-top:2px}
 .tabbar{position:absolute;bottom:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-around;background:rgba(0,0,0,.25);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.08);z-index:6}
@@ -167,13 +170,9 @@ h1{font-size:22px;font-weight:700;letter-spacing:3px;text-transform:uppercase;co
 <div class="signin-date" id="signinDate">--/-- ---.</div>
 </button>
 <div class="bottom-actions">
-<button class="action-card" id="learnBtn">
-<div class="action-label">Learn</div>
-<div class="action-count" id="learnCount">0</div>
-</button>
-<button class="action-card" id="reviewBtn">
-<div class="action-label">Review</div>
-<div class="action-count" id="reviewCount">0</div>
+<button class="action-card primary" id="startBtn">
+<div class="action-label">开始游戏</div>
+<div class="action-count" id="gameCount">0</div>
 </button>
 </div>
 <div class="tabbar">
@@ -246,7 +245,7 @@ function getWordPool(diff,len){const idx=DIFF_ORDER.indexOf(diff);let pool=[];fo
 function rebuildValidSet(){State.validSet=new Set();for(let i=0;i<=DIFF_ORDER.indexOf(State.diff);i++){const d=DIFF_ORDER[i];if(VOCAB[d]&&VOCAB[d][State.len])VOCAB[d][State.len].forEach(w=>State.validSet.add(w))}}
 
 function buildDiffTabs(){const tabs=document.getElementById('diffTabs');tabs.innerHTML='';DIFFICULTIES.forEach(d=>{const b=document.createElement('button');b.className='diff-tab'+(State.diff===d.id?' active':'');b.textContent=d.name;b.onclick=()=>{State.diff=d.id;buildDiffTabs();updateHomeCounts()};tabs.appendChild(b)})}
-function updateHomeCounts(){const now=new Date();const dateStr=(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0')+' '+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+'.';document.getElementById('signinDate').textContent=dateStr;const k=State.diff+'_'+State.len+'_'+State.timed+'_'+State.excludeCount+'_'+State.hints;const s=State.stats[k];document.getElementById('learnCount').textContent=s?s.played:0;document.getElementById('reviewCount').textContent=s?s.won:0}
+function updateHomeCounts(){const now=new Date();const dateStr=(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0')+' '+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+'.';document.getElementById('signinDate').textContent=dateStr;const k=State.diff+'_'+State.len+'_'+State.timed+'_'+State.excludeCount+'_'+State.hints;const s=State.stats[k];document.getElementById('gameCount').textContent=s?s.played:0}
 function openSettings(){document.getElementById('settingsPanel').classList.add('show');buildSpOptions()}
 function closeSettings(){document.getElementById('settingsPanel').classList.remove('show')}
 function buildSpOptions(){buildSpOpts('spDiffOpts',DIFFICULTIES,State.diff,renderSpDiff);buildSpOpts('spLenOpts',LENGTHS,LENGTHS.indexOf(State.len),renderSpNum);buildSpOpts('spAttemptOpts',ATTEMPTS,ATTEMPTS.indexOf(State.attempts),renderSpNum);buildSpOpts('spHintOpts',HINTS,HINTS.indexOf(State.hints),renderSpNum);buildSpOpts('spExcludeOpts',EXCLUDE_COUNTS,EXCLUDE_COUNTS.indexOf(State.excludeCount),renderSpExclude);buildSpOpts('spTimedOpts',TIMED,TIMED.indexOf(State.timed),renderSpTimed);const d=DIFFICULTIES.find(x=>x.id===State.diff);const cnt=getWordPool(State.diff,State.len).length;document.getElementById('spDiffHint').textContent=`${d.name} · ${cnt}词`}
@@ -300,8 +299,7 @@ function toggleTheme(){toast('主题切换开发中')}
 function bindEvents(){
 document.getElementById('avatarBtn').onclick=openSettings;
 document.getElementById('signinBtn').onclick=doSignin;
-document.getElementById('learnBtn').onclick=doLearn;
-document.getElementById('reviewBtn').onclick=doReview;
+document.getElementById('startBtn').onclick=doStart;
 document.getElementById('tabHome').onclick=showHome;
 document.getElementById('tabBook').onclick=showLibrary;
 document.getElementById('tabStats').onclick=showStats;
@@ -337,27 +335,17 @@ function loadSignin(){try{return JSON.parse(localStorage.getItem(SK+'_signin')||
 function saveSignin(d){localStorage.setItem(SK+'_signin',JSON.stringify(d))}
 function showSigninResult(d){
 const exp=d.streak>=7?'本周全勤奖励':d.streak>=3?'连续3天+':d.streak>=1?'坚持就是胜利':'开始你的签到';
-document.getElementById('modalContent').innerHTML=`<div class="mt">签到成功</div><div class="mst">${dateKey(new Date())}</div><div class="stats" style="margin:18px 0"><div class="si"><div class="sn" style="color:#ff6b1a">${d.streak}</div><div class="sl">连续天数</div></div><div class="si"><div class="sn">${d.totalDays}</div><div class="sl">累计签到</div></div></div><div class="mex" style="font-style:normal;text-align:center">${exp}</div><div class="mb"><button class="mbtn p" id="signinGo">开始 Learn</button><button class="mbtn s" id="signinClose">关闭</button></div>`;
+document.getElementById('modalContent').innerHTML=`<div class="mt">签到成功</div><div class="mst">${dateKey(new Date())}</div><div class="stats" style="margin:18px 0"><div class="si"><div class="sn" style="color:#ff6b1a">${d.streak}</div><div class="sl">连续天数</div></div><div class="si"><div class="sn">${d.totalDays}</div><div class="sl">累计签到</div></div></div><div class="mex" style="font-style:normal;text-align:center">${exp}</div><div class="mb"><button class="mbtn p" id="signinGo">开始游戏</button><button class="mbtn s" id="signinClose">关闭</button></div>`;
 showModal();
-document.getElementById('signinGo').onclick=()=>{hideModal();doLearn()};
+document.getElementById('signinGo').onclick=()=>{hideModal();doStart()};
 document.getElementById('signinClose').onclick=hideModal;
 }
 
-// ===== Learn 直接开始游戏 =====
-function doLearn(){
+// ===== 开始游戏 =====
+function doStart(){
 if(State.timed===0&&State.hints===0)State.hints=1;
 if(!newGame()){openSettings();return}
 showGame();
-}
-
-// ===== Review 复习模式 =====
-function doReview(){
-// 复习模式 = 高考 + 4 字母 + 1 提示 (易词复习)
-State.diff='gaokao';State.len=4;State.hints=2;State.excludeCount=1;State.timed=0;
-buildSpOptions();
-if(!newGame()){openSettings();return}
-showGame();
-toast('复习模式:高考4字母·2提示·1排除');
 }
 
 // ===== 词库 (tabBook) =====
@@ -400,7 +388,13 @@ document.getElementById('closeLib').onclick=hideModal;
 }
 function showWordDetail(word){
 const dict=DICT[word];
-const mean=MEAN[word]||'(暂无释义)';
+let mean=MEAN[word]||'';
+if(!mean&&dict){
+  // 用 DICT 的第一个释义作为简单中文/英文兜底
+  const firstE = (dict.e||'').split('\n')[0].replace(/\[[^\]]+\]/g,'').trim();
+  if(firstE)mean=firstE.length>40?firstE.substring(0,40)+'...':firstE;
+}
+if(!mean)mean='(暂无释义)';
 let dictHtml='';
 if(dict){
 dictHtml=`<div class="dw"><div class="dwp">${dict.p||''}</div><div class="dws">${dict.s||''}</div>${dict.e?`<div class="dwe">${dict.e}</div>`:''}${dict.ex?`<div class="dwex">例: ${dict.ex}</div>`:''}</div>`;
@@ -417,12 +411,17 @@ function showDictLookup(){
 const w=State.answer;
 if(!w){toast('请先开始一局');return}
 const dict=DICT[w];
-const mean=MEAN[w]||'(暂无释义)';
+let mean=MEAN[w]||'';
+if(!mean&&dict){
+  const firstE = (dict.e||'').split('\n')[0].replace(/\[[^\]]+\]/g,'').trim();
+  if(firstE)mean=firstE.length>40?firstE.substring(0,40)+'...':firstE;
+}
+if(!mean)mean='(暂无释义)';
 let dictHtml='';
 if(dict){
 dictHtml=`<div class="dw"><div class="dwp">${dict.p||''}</div><div class="dws">${dict.s||''}</div>${dict.e?`<div class="dwe">${dict.e}</div>`:''}${dict.ex?`<div class="dwex">例: ${dict.ex}</div>`:''}</div>`;
 }else{
-dictHtml=`<div class="dw" style="opacity:.7;text-align:center;padding:10px">该词暂无牛津释义</div>`;
+dictHtml=`<div class="dw" style="opacity:.7;text-align:center;padding:10px">该词暂无牛津释义<br><span style="font-size:11px;opacity:.6">${mean}</span></div>`;
 }
 document.getElementById('modalContent').innerHTML=`<div class="mt" style="letter-spacing:6px">${w}</div><div class="mst">${mean}</div>${dictHtml}<div class="mb"><button class="mbtn s" id="closeDict">关闭</button></div>`;
 showModal();
