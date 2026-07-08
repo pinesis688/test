@@ -134,6 +134,25 @@ h1{font-size:22px;font-weight:700;letter-spacing:3px;text-transform:uppercase;co
 .hti.locked{background:#538d4e;border-color:#538d4e;color:#fff}
 .hti.excluded{background:#f5793a;border-color:#f5793a;color:#fff;opacity:.7}
 .hclose{width:100%;padding:12px;background:#538d4e;color:#fff;border:none;border-radius:22px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;margin-top:8px}
+/* 词典详情 */
+.dw{background:#0a0a0a;border-radius:8px;padding:12px;margin-bottom:10px;text-align:left}
+.dwp{font-family:Georgia,serif;font-size:18px;color:#7ec97e;font-style:italic;text-align:center;margin-bottom:2px}
+.dws{font-size:11px;color:#999;text-align:center;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.dwe{font-size:13px;line-height:1.5;color:#ddd;margin-bottom:6px}
+.dwex{font-size:12px;color:#aaa;font-style:italic;line-height:1.4;padding-top:6px;border-top:1px dashed rgba(255,255,255,.1)}
+/* 词库搜索 */
+.lib-search{display:flex;gap:6px;margin-bottom:8px}
+.lib-search input{flex:1;padding:8px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,.15);background:rgba(0,0,0,.4);color:#fff;font-size:14px;font-family:inherit;text-transform:uppercase;letter-spacing:2px;outline:none}
+.lib-search input:focus{border-color:#538d4e}
+.lib-btn{padding:8px 14px;background:#538d4e;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.lib-list{max-height:340px;overflow-y:auto;text-align:left;background:rgba(0,0,0,.25);border-radius:8px;margin-bottom:6px}
+.lib-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .15s}
+.lib-item:hover{background:rgba(255,255,255,.05)}
+.lib-item.has-dict{border-left:2px solid #7ec97e}
+.lw{font-family:Georgia,serif;font-weight:700;font-size:15px;letter-spacing:1px;min-width:70px;color:#fff}
+.ld{font-size:14px;flex-shrink:0}
+.lm{font-size:12px;color:#999;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-stats{font-size:11px;opacity:.7;text-align:center;margin:4px 0}
 @media(max-width:420px){.key{height:48px;font-size:14px;max-width:38px}.key.wide{font-size:10px}h1{font-size:20px}.gi{font-size:11px;gap:6px}.gb{font-size:10px;padding:4px 8px}}
 @media(max-width:360px){.key{height:44px;max-width:34px;font-size:13px}}
 </style>
@@ -183,7 +202,7 @@ h1{font-size:22px;font-weight:700;letter-spacing:3px;text-transform:uppercase;co
 <header>
 <div class="hl"><button class="ib" id="homeBtn" title="返回">🏠</button><button class="ib" id="helpBtn" title="帮助">?</button></div>
 <h1>Wordle</h1>
-<div class="hr"><button class="ib" id="themeBtn" title="主题">🌙</button><button class="ib" id="statsBtn" title="统计">📊</button></div>
+<div class="hr"><button class="ib" id="dictBtn" title="查词">📖</button><button class="ib" id="themeBtn" title="主题">🌙</button><button class="ib" id="statsBtn" title="统计">📊</button></div>
 </header>
 <div class="gbar">
 <div class="gi" id="gameInfo"></div>
@@ -278,7 +297,137 @@ let toastTimer;
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1600)}
 function toggleTheme(){toast('主题切换开发中')}
 
-function bindEvents(){document.getElementById('avatarBtn').onclick=openSettings;document.getElementById('signinBtn').onclick=openSettings;document.getElementById('learnBtn').onclick=openSettings;document.getElementById('reviewBtn').onclick=openSettings;document.getElementById('tabHome').onclick=showHome;document.getElementById('tabBook').onclick=()=>toast('词库功能开发中');document.getElementById('tabStats').onclick=showStats;document.getElementById('spClose').onclick=closeSettings;document.getElementById('spGo').onclick=()=>{closeSettings();if(newGame()){showGame()}};document.getElementById('homeBtn').onclick=showHome;document.getElementById('helpBtn').onclick=showHelp;document.getElementById('statsBtn').onclick=showStats;document.getElementById('themeBtn').onclick=toggleTheme;document.getElementById('hintBtn').onclick=useHint;document.getElementById('excludeBtn').onclick=useExclude;document.getElementById('surrenderBtn').onclick=surrender;document.addEventListener('keydown',e=>{if(!document.getElementById('game').classList.contains('show'))return;if(e.key==='Enter')handleKey('ENTER');else if(e.key==='Backspace')handleKey('BACKSPACE');else if(/^[a-zA-Z]$/.test(e.key))handleKey(e.key.toUpperCase())});window.addEventListener('resize',()=>{if(document.getElementById('game').classList.contains('show')&&!State.gameOver){const size=tileSize();State.rows.forEach(row=>row.forEach(t=>{t.style.width=size+'px';t.style.height=size+'px';t.style.fontSize=(size*0.5)+'px'}))}})}
+function bindEvents(){
+document.getElementById('avatarBtn').onclick=openSettings;
+document.getElementById('signinBtn').onclick=doSignin;
+document.getElementById('learnBtn').onclick=doLearn;
+document.getElementById('reviewBtn').onclick=doReview;
+document.getElementById('tabHome').onclick=showHome;
+document.getElementById('tabBook').onclick=showLibrary;
+document.getElementById('tabStats').onclick=showStats;
+document.getElementById('spClose').onclick=closeSettings;
+document.getElementById('spGo').onclick=()=>{closeSettings();if(newGame()){showGame()}};
+document.getElementById('homeBtn').onclick=()=>{hideModal();showHome()};
+document.getElementById('helpBtn').onclick=showHelp;
+document.getElementById('statsBtn').onclick=showStats;
+document.getElementById('themeBtn').onclick=toggleTheme;
+document.getElementById('hintBtn').onclick=useHint;
+document.getElementById('excludeBtn').onclick=useExclude;
+document.getElementById('surrenderBtn').onclick=surrender;
+document.getElementById('dictBtn').onclick=showDictLookup;
+document.addEventListener('keydown',e=>{if(!document.getElementById('game').classList.contains('show'))return;if(e.key==='Enter')handleKey('ENTER');else if(e.key==='Backspace')handleKey('BACKSPACE');else if(/^[a-zA-Z]$/.test(e.key))handleKey(e.key.toUpperCase())});
+window.addEventListener('resize',()=>{if(document.getElementById('game').classList.contains('show')&&!State.gameOver){const size=tileSize();State.rows.forEach(row=>row.forEach(t=>{t.style.width=size+'px';t.style.height=size+'px';t.style.fontSize=(size*0.5)+'px'}))}})
+}
+
+// ===== 签到功能 =====
+function doSignin(){
+const today=dateKey(new Date());
+const data=loadSignin();
+if(data.lastDate===today){toast(`今天已签到 · 连续${data.streak}天`);return}
+const yesterday=dateKey(new Date(Date.now()-86400000));
+if(data.lastDate===yesterday)data.streak++;else data.streak=1;
+data.lastDate=today;data.totalDays=(data.totalDays||0)+1;
+saveSignin(data);
+updateHomeCounts();
+toast(`签到成功!连续${data.streak}天`);
+showSigninResult(data);
+}
+function dateKey(d){return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0')}
+function loadSignin(){try{return JSON.parse(localStorage.getItem(SK+'_signin')||'{}')}catch(e){return{}}}
+function saveSignin(d){localStorage.setItem(SK+'_signin',JSON.stringify(d))}
+function showSigninResult(d){
+const exp=d.streak>=7?'本周全勤奖励':d.streak>=3?'连续3天+':d.streak>=1?'坚持就是胜利':'开始你的签到';
+document.getElementById('modalContent').innerHTML=`<div class="mt">签到成功</div><div class="mst">${dateKey(new Date())}</div><div class="stats" style="margin:18px 0"><div class="si"><div class="sn" style="color:#ff6b1a">${d.streak}</div><div class="sl">连续天数</div></div><div class="si"><div class="sn">${d.totalDays}</div><div class="sl">累计签到</div></div></div><div class="mex" style="font-style:normal;text-align:center">${exp}</div><div class="mb"><button class="mbtn p" id="signinGo">开始 Learn</button><button class="mbtn s" id="signinClose">关闭</button></div>`;
+showModal();
+document.getElementById('signinGo').onclick=()=>{hideModal();doLearn()};
+document.getElementById('signinClose').onclick=hideModal;
+}
+
+// ===== Learn 直接开始游戏 =====
+function doLearn(){
+if(State.timed===0&&State.hints===0)State.hints=1;
+if(!newGame()){openSettings();return}
+showGame();
+}
+
+// ===== Review 复习模式 =====
+function doReview(){
+// 复习模式 = 高考 + 4 字母 + 1 提示 (易词复习)
+State.diff='gaokao';State.len=4;State.hints=2;State.excludeCount=1;State.timed=0;
+buildSpOptions();
+if(!newGame()){openSettings();return}
+showGame();
+toast('复习模式:高考4字母·2提示·1排除');
+}
+
+// ===== 词库 (tabBook) =====
+function showLibrary(){
+document.getElementById('modalContent').innerHTML=`<div class="mt">词库</div><div class="mst">对照牛津词典 · 5难度×4长度</div><div class="lib-search"><input type="text" id="libInput" placeholder="输入单词查词..." maxlength="10" autocomplete="off"><button class="lib-btn" id="libSearch">查询</button></div><div class="lib-list" id="libList"></div><div class="lib-stats" id="libStats"></div><div class="mb"><button class="mbtn s" id="closeLib">关闭</button></div>`;
+showModal();
+const input=document.getElementById('libInput');
+const list=document.getElementById('libList');
+const stats=document.getElementById('libStats');
+// 统计
+let cnt=0;for(const d in VOCAB)for(const l in VOCAB[d])cnt+=VOCAB[d][l].length;
+stats.innerHTML=`<div style="font-size:11px;opacity:.7;margin:6px 0">共 ${cnt} 词 · ${Object.keys(DICT).length}+ 词有牛津释义</div>`;
+// 初始化显示前 50 个
+function render(words){
+if(!words.length){list.innerHTML='<div style="text-align:center;opacity:.6;padding:20px">未找到该词</div>';return}
+let html='';
+words.slice(0,100).forEach(w=>{
+const hasDict=!!DICT[w];
+const mean=MEAN[w]||'';
+html+=`<div class="lib-item ${hasDict?'has-dict':''}" data-word="${w}"><span class="lw">${w}</span>${hasDict?'<span class="ld">📖</span>':'<span class="ld" style="opacity:.3">·</span>'}<span class="lm">${mean}</span></div>`;
+});
+if(words.length>100)html+=`<div style="text-align:center;opacity:.5;padding:8px;font-size:11px">...还有 ${words.length-100} 个</div>`;
+list.innerHTML=html;
+list.querySelectorAll('.lib-item').forEach(el=>{el.onclick=()=>showWordDetail(el.dataset.word)});
+}
+// 默认显示 gaokao 5 字母
+const allWords=[];for(const d in VOCAB)for(const l in VOCAB[d])allWords.push(...VOCAB[d][l]);
+const uniqueWords=[...new Set(allWords)].sort();
+render(uniqueWords.slice(0,100));
+// 搜索
+function doSearch(){
+const q=input.value.trim().toUpperCase();
+if(!q)return render(uniqueWords.slice(0,100));
+const filtered=uniqueWords.filter(w=>w.includes(q));
+render(filtered);
+}
+document.getElementById('libSearch').onclick=doSearch;
+input.onkeydown=e=>{if(e.key==='Enter')doSearch()};
+document.getElementById('closeLib').onclick=hideModal;
+}
+function showWordDetail(word){
+const dict=DICT[word];
+const mean=MEAN[word]||'(暂无释义)';
+let dictHtml='';
+if(dict){
+dictHtml=`<div class="dw"><div class="dwp">${dict.p||''}</div><div class="dws">${dict.s||''}</div>${dict.e?`<div class="dwe">${dict.e}</div>`:''}${dict.ex?`<div class="dwex">例: ${dict.ex}</div>`:''}</div>`;
+}else{
+dictHtml=`<div class="dw" style="opacity:.7;text-align:center;padding:12px">该词暂无牛津释义<br><span style="font-size:11px;opacity:.6">${mean}</span></div>`;
+}
+document.getElementById('modalContent').innerHTML=`<div class="mt" style="letter-spacing:6px">${word}</div><div class="mst">${mean}</div>${dictHtml}<div class="mb"><button class="mbtn s" id="backLib">返回词库</button><button class="mbtn p" id="closeWord">关闭</button></div>`;
+document.getElementById('backLib').onclick=showLibrary;
+document.getElementById('closeWord').onclick=hideModal;
+}
+
+// ===== 游戏中查词 =====
+function showDictLookup(){
+const w=State.answer;
+if(!w){toast('请先开始一局');return}
+const dict=DICT[w];
+const mean=MEAN[w]||'(暂无释义)';
+let dictHtml='';
+if(dict){
+dictHtml=`<div class="dw"><div class="dwp">${dict.p||''}</div><div class="dws">${dict.s||''}</div>${dict.e?`<div class="dwe">${dict.e}</div>`:''}${dict.ex?`<div class="dwex">例: ${dict.ex}</div>`:''}</div>`;
+}else{
+dictHtml=`<div class="dw" style="opacity:.7;text-align:center;padding:10px">该词暂无牛津释义</div>`;
+}
+document.getElementById('modalContent').innerHTML=`<div class="mt" style="letter-spacing:6px">${w}</div><div class="mst">${mean}</div>${dictHtml}<div class="mb"><button class="mbtn s" id="closeDict">关闭</button></div>`;
+showModal();
+document.getElementById('closeDict').onclick=hideModal;
+}
 function showHome(){stopTimer();document.getElementById('home').classList.remove('hidden');document.getElementById('game').classList.remove('show');document.getElementById('tabHome').classList.add('active');document.getElementById('tabBook').classList.remove('active');document.getElementById('tabStats').classList.remove('active');buildDiffTabs();updateHomeCounts()}
 function showGame(){document.getElementById('home').classList.add('hidden');document.getElementById('game').classList.add('show')}
 function init(){buildDiffTabs();updateHomeCounts();bindEvents()}

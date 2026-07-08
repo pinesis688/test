@@ -47,16 +47,1184 @@ const MEAN = {
 "WORLD":"世界","WOULD":"会","COULD":"能","SHOULD":"应该","ALERT":"警报"
 };
 
-// 牛津词典数据 (简版)
+// 牛津词典数据 (牛津高阶英汉双解)
+// 包含: 音标 / 词性 / 英文释义 / 例句
 const DICT = {
-"APPLE":{p:"/ˈæpl/",s:"n.",e:"a round fruit with red, green, or yellow skin and a white inside"},
-"WATER":{p:"/ˈwɔːtər/",s:"n./v.",e:"a clear liquid without taste or smell that is essential to life"},
-"HOUSE":{p:"/haʊs/",s:"n.",e:"a building for human habitation, typically one that is lived in by a family"},
-"HAPPY":{p:"/ˈhæpi/",s:"adj.",e:"feeling or showing pleasure; pleased"},
-"MUSIC":{p:"/ˈmjuːzɪk/",s:"n.",e:"vocal or instrumental sounds combined in such a way as to produce beauty of form"},
-"HEART":{p:"/hɑːt/",s:"n.",e:"a hollow muscular organ that pumps blood through the body"},
-"LEARN":{p:"/lɜːn/",s:"v.",e:"acquire knowledge of or skill in (something) by study, experience, or being taught"},
-"WORLD":{p:"/wɜːld/",s:"n.",e:"the earth, together with all of its countries, peoples, and natural features"},
-"LIGHT":{p:"/laɪt/",s:"n./adj./v.",e:"the natural agent that stimulates sight and makes things visible"},
-"PLACE":{p:"/pleɪs/",s:"n./v.",e:"a particular position or point in space"}
+  "ABOUT": {
+    "p": "/əˈbaʊt/",
+    "s": "prep./adv.",
+    "e": "on the subject of; concerning\nlocated or happening in or around",
+    "ex": "a book about cats"
+  },
+  "ABOVE": {
+    "p": "/əˈbʌv/",
+    "s": "prep./adv.",
+    "e": "in or to a higher position than",
+    "ex": "above the clouds"
+  },
+  "ABUSE": {
+    "p": "/əˈbjuːs/",
+    "s": "n./v.",
+    "e": "misuse; cruel or violent treatment",
+    "ex": "drug abuse"
+  },
+  "ACTOR": {
+    "p": "/ˈæktər/",
+    "s": "n.",
+    "e": "a person who acts in a play, film, etc.",
+    "ex": "a famous actor"
+  },
+  "ACUTE": {
+    "p": "/əˈkjuːt/",
+    "s": "adj.",
+    "e": "sharp or severe; (of an angle) less than 90°",
+    "ex": "acute pain"
+  },
+  "ADMIT": {
+    "p": "/ədˈmɪt/",
+    "s": "v.",
+    "e": "confess to be true; allow to enter",
+    "ex": "admit a mistake"
+  },
+  "ADOPT": {
+    "p": "/əˈdɑːpt/",
+    "s": "v.",
+    "e": "legally take another's child as one's own; choose",
+    "ex": "adopt a new policy"
+  },
+  "ADULT": {
+    "p": "/ˈædʌlt/",
+    "s": "n./adj.",
+    "e": "a person who is fully grown",
+    "ex": "adult education"
+  },
+  "AFTER": {
+    "p": "/ˈæftər/",
+    "s": "prep./conj./adv.",
+    "e": "during the period following",
+    "ex": "after lunch"
+  },
+  "AGAIN": {
+    "p": "/əˈɡen/",
+    "s": "adv.",
+    "e": "once more; another time",
+    "ex": "try again"
+  },
+  "AGENT": {
+    "p": "/ˈeɪdʒənt/",
+    "s": "n.",
+    "e": "a person who acts on behalf of another",
+    "ex": "travel agent"
+  },
+  "AGREE": {
+    "p": "/əˈɡriː/",
+    "s": "v.",
+    "e": "have the same opinion; consent",
+    "ex": "I agree with you"
+  },
+  "AHEAD": {
+    "p": "/əˈhed/",
+    "s": "adv.",
+    "e": "in front; further forward",
+    "ex": "go ahead"
+  },
+  "ALARM": {
+    "p": "/əˈlɑːrm/",
+    "s": "n./v.",
+    "e": "a warning of danger; a device giving such warning",
+    "ex": "fire alarm"
+  },
+  "ALBUM": {
+    "p": "/ˈælbəm/",
+    "s": "n.",
+    "e": "a blank book for collecting items; a recorded collection",
+    "ex": "photo album"
+  },
+  "ALERT": {
+    "p": "/əˈlɜːrt/",
+    "s": "adj./n./v.",
+    "e": "watchful and prompt; a warning",
+    "ex": "stay alert"
+  },
+  "ALIKE": {
+    "p": "/əˈlaɪk/",
+    "s": "adj./adv.",
+    "e": "similar; in the same way",
+    "ex": "they look alike"
+  },
+  "ALIVE": {
+    "p": "/əˈlaɪv/",
+    "s": "adj.",
+    "e": "living; not dead",
+    "ex": "keep hope alive"
+  },
+  "ALLOW": {
+    "p": "/əˈlaʊ/",
+    "s": "v.",
+    "e": "give permission to; let",
+    "ex": "allow me to help"
+  },
+  "ALONE": {
+    "p": "/əˈloʊn/",
+    "s": "adj./adv.",
+    "e": "without other people; solitary",
+    "ex": "live alone"
+  },
+  "ALONG": {
+    "p": "/əˈlɔːŋ/",
+    "s": "prep./adv.",
+    "e": "moving in a constant direction on",
+    "ex": "walk along the road"
+  },
+  "ALPHA": {
+    "p": "/ˈælfə/",
+    "s": "n./adj.",
+    "e": "the first letter of the Greek alphabet",
+    "ex": "alpha and omega"
+  },
+  "ALTER": {
+    "p": "/ˈɔːltər/",
+    "s": "v.",
+    "e": "change in character or composition",
+    "ex": "alter a dress"
+  },
+  "AMONG": {
+    "p": "/əˈmʌŋ/",
+    "s": "prep.",
+    "e": "situated in the middle of; surrounded by",
+    "ex": "among friends"
+  },
+  "ANGER": {
+    "p": "/ˈæŋɡər/",
+    "s": "n./v.",
+    "e": "a strong feeling of annoyance",
+    "ex": "speak in anger"
+  },
+  "ANGLE": {
+    "p": "/ˈæŋɡl/",
+    "s": "n.",
+    "e": "the space between two intersecting lines",
+    "ex": "a sharp angle"
+  },
+  "ANGRY": {
+    "p": "/ˈæŋɡri/",
+    "s": "adj.",
+    "e": "feeling or showing anger",
+    "ex": "an angry customer"
+  },
+  "APART": {
+    "p": "/əˈpɑːrt/",
+    "s": "adv.",
+    "e": "separated by a distance; to pieces",
+    "ex": "stand apart"
+  },
+  "APPLE": {
+    "p": "/ˈæpl/",
+    "s": "n.",
+    "e": "a round fruit with red, green, or yellow skin",
+    "ex": "an apple a day"
+  },
+  "APPLY": {
+    "p": "/əˈplaɪ/",
+    "s": "v.",
+    "e": "make a formal request; put into operation",
+    "ex": "apply for a job"
+  },
+  "ARENA": {
+    "p": "/əˈriːnə/",
+    "s": "n.",
+    "e": "a level area for sports events",
+    "ex": "the sports arena"
+  },
+  "ARGUE": {
+    "p": "/ˈɑːrɡjuː/",
+    "s": "v.",
+    "e": "give reasons for or against; quarrel",
+    "ex": "argue a case"
+  },
+  "ARISE": {
+    "p": "/əˈraɪz/",
+    "s": "v.",
+    "e": "emerge; become apparent",
+    "ex": "problems arise"
+  },
+  "ARMOR": {
+    "p": "/ˈɑːrmər/",
+    "s": "n.",
+    "e": "a protective covering for the body",
+    "ex": "knight's armor"
+  },
+  "ARRAY": {
+    "p": "/əˈreɪ/",
+    "s": "n./v.",
+    "e": "an impressive display; arrange",
+    "ex": "an array of options"
+  },
+  "ARROW": {
+    "p": "/ˈæroʊ/",
+    "s": "n.",
+    "e": "a weapon with a pointed tip, shot from a bow",
+    "ex": "shoot an arrow"
+  },
+  "ASIDE": {
+    "p": "/əˈsaɪd/",
+    "s": "adv.",
+    "e": "to one side; out of the way",
+    "ex": "step aside"
+  },
+  "ASSET": {
+    "p": "/ˈæset/",
+    "s": "n.",
+    "e": "a useful thing or person",
+    "ex": "team asset"
+  },
+  "ATLAS": {
+    "p": "/ˈætləs/",
+    "s": "n.",
+    "e": "a book of maps",
+    "ex": "world atlas"
+  },
+  "AUDIO": {
+    "p": "/ˈɔːdioʊ/",
+    "s": "adj./n.",
+    "e": "relating to sound reproduction",
+    "ex": "audio file"
+  },
+  "AUDIT": {
+    "p": "/ˈɔːdɪt/",
+    "s": "n./v.",
+    "e": "an official inspection of accounts",
+    "ex": "annual audit"
+  },
+  "AVOID": {
+    "p": "/əˈvɔɪd/",
+    "s": "v.",
+    "e": "keep away from; prevent",
+    "ex": "avoid trouble"
+  },
+  "AWAKE": {
+    "p": "/əˈweɪk/",
+    "s": "adj./v.",
+    "e": "not sleeping; rouse from sleep",
+    "ex": "stay awake"
+  },
+  "BACON": {
+    "p": "/ˈbeɪkən/",
+    "s": "n.",
+    "e": "cured meat from the back or sides of a pig",
+    "ex": "bacon and eggs"
+  },
+  "BADGE": {
+    "p": "/bædʒ/",
+    "s": "n.",
+    "e": "a small piece of metal worn to identify",
+    "ex": "name badge"
+  },
+  "BADLY": {
+    "p": "/ˈbædli/",
+    "s": "adv.",
+    "e": "in an unsatisfactory or incompetent way",
+    "ex": "badly hurt"
+  },
+  "BAGEL": {
+    "p": "/ˈbeɪɡəl/",
+    "s": "n.",
+    "e": "a dense bread roll in the shape of a ring",
+    "ex": "cream cheese bagel"
+  },
+  "BALMY": {
+    "p": "/ˈbɑːmi/",
+    "s": "adj.",
+    "e": "pleasantly warm; mild",
+    "ex": "a balmy evening"
+  },
+  "BANJO": {
+    "p": "/ˈbændʒoʊ/",
+    "s": "n.",
+    "e": "a stringed musical instrument",
+    "ex": "play the banjo"
+  },
+  "BARGE": {
+    "p": "/bɑːrdʒ/",
+    "s": "n./v.",
+    "e": "a long flat-bottomed boat; push forcefully",
+    "ex": "barge in"
+  },
+  "BASIC": {
+    "p": "/ˈbeɪsɪk/",
+    "s": "adj.",
+    "e": "forming an essential foundation; simple",
+    "ex": "basic English"
+  },
+  "BASIN": {
+    "p": "/ˈbeɪsn/",
+    "s": "n.",
+    "e": "a bowl for washing; a region drained by a river",
+    "ex": "wash basin"
+  },
+  "BATHE": {
+    "p": "/beɪð/",
+    "s": "v.",
+    "e": "wash in a bath; swim",
+    "ex": "bathe in the sea"
+  },
+  "BEACH": {
+    "p": "/biːtʃ/",
+    "s": "n.",
+    "e": "a pebbly or sandy shore",
+    "ex": "sandy beach"
+  },
+  "BEARD": {
+    "p": "/bɪrd/",
+    "s": "n.",
+    "e": "hair growing on a man's face",
+    "ex": "long beard"
+  },
+  "BEAST": {
+    "p": "/biːst/",
+    "s": "n.",
+    "e": "an animal, especially a wild one",
+    "ex": "wild beast"
+  },
+  "BEING": {
+    "p": "/ˈbiːɪŋ/",
+    "s": "n.",
+    "e": "existence; a person or creature",
+    "ex": "human being"
+  },
+  "BENCH": {
+    "p": "/bentʃ/",
+    "s": "n.",
+    "e": "a long seat for several people",
+    "ex": "park bench"
+  },
+  "BIBLE": {
+    "p": "/ˈbaɪbl/",
+    "s": "n.",
+    "e": "the Christian scriptures; any authoritative book",
+    "ex": "study the Bible"
+  },
+  "BIRTH": {
+    "p": "/bɜːrθ/",
+    "s": "n.",
+    "e": "the emergence of a baby from the body",
+    "ex": "date of birth"
+  },
+  "BLACK": {
+    "p": "/blæk/",
+    "s": "adj./n.",
+    "e": "of the very darkest color",
+    "ex": "black coffee"
+  },
+  "BLADE": {
+    "p": "/bleɪd/",
+    "s": "n.",
+    "e": "the flat cutting edge of a knife or tool",
+    "ex": "razor blade"
+  },
+  "BLAME": {
+    "p": "/bleɪm/",
+    "s": "v./n.",
+    "e": "assign responsibility for a fault",
+    "ex": "don't blame me"
+  },
+  "BLANK": {
+    "p": "/blæŋk/",
+    "s": "adj./n.",
+    "e": "empty; not filled in",
+    "ex": "blank page"
+  },
+  "BLAST": {
+    "p": "/blæst/",
+    "s": "n./v.",
+    "e": "an explosion; a strong gust",
+    "ex": "a blast of wind"
+  },
+  "BLAZE": {
+    "p": "/bleɪz/",
+    "s": "n./v.",
+    "e": "a very large or fierce fire",
+    "ex": "blaze of glory"
+  },
+  "BLEAK": {
+    "p": "/bliːk/",
+    "s": "adj.",
+    "e": "cold and miserable; not hopeful",
+    "ex": "bleak future"
+  },
+  "BLESS": {
+    "p": "/bles/",
+    "s": "v.",
+    "e": "invoke God's favor upon",
+    "ex": "bless you"
+  },
+  "BLIND": {
+    "p": "/blaɪnd/",
+    "s": "adj.",
+    "e": "unable to see; lacking judgment",
+    "ex": "blind person"
+  },
+  "BLINK": {
+    "p": "/blɪŋk/",
+    "s": "v./n.",
+    "e": "shut and open the eyes quickly",
+    "ex": "blink an eye"
+  },
+  "BLOCK": {
+    "p": "/blɑːk/",
+    "s": "n./v.",
+    "e": "a solid piece of material; obstruct",
+    "ex": "block of wood"
+  },
+  "BLOOD": {
+    "p": "/blʌd/",
+    "s": "n.",
+    "e": "the red liquid in the body",
+    "ex": "blood pressure"
+  },
+  "BLOOM": {
+    "p": "/bluːm/",
+    "s": "n./v.",
+    "e": "a flower; produce flowers",
+    "ex": "rose in bloom"
+  },
+  "BLUE": {
+    "p": "/bluː/",
+    "s": "adj./n.",
+    "e": "of the color of the sky on a clear day",
+    "ex": "blue sky"
+  },
+  "BLUNT": {
+    "p": "/blʌnt/",
+    "s": "adj.",
+    "e": "having a dull edge; frank",
+    "ex": "blunt knife"
+  },
+  "BLURT": {
+    "p": "/blɜːrt/",
+    "s": "v.",
+    "e": "say suddenly and without thinking",
+    "ex": "blurt out a secret"
+  },
+  "BLUSH": {
+    "p": "/blʌʃ/",
+    "s": "v./n.",
+    "e": "turn pink from embarrassment",
+    "ex": "blush with shame"
+  },
+  "BOARD": {
+    "p": "/bɔːrd/",
+    "s": "n./v.",
+    "e": "a flat piece of wood; get on a vehicle",
+    "ex": "bulletin board"
+  },
+  "BOOST": {
+    "p": "/buːst/",
+    "s": "v./n.",
+    "e": "help or encourage; an increase",
+    "ex": "boost morale"
+  },
+  "BOOTH": {
+    "p": "/buːθ/",
+    "s": "n.",
+    "e": "a small temporary structure",
+    "ex": "phone booth"
+  },
+  "BOUND": {
+    "p": "/baʊnd/",
+    "s": "adj./v.",
+    "e": "heading toward; tied",
+    "ex": "bound for Paris"
+  },
+  "BOWEL": {
+    "p": "/ˈbaʊəl/",
+    "s": "n.",
+    "e": "the intestine",
+    "ex": "bowel movement"
+  },
+  "BRAIN": {
+    "p": "/breɪn/",
+    "s": "n.",
+    "e": "the organ of thought inside the head",
+    "ex": "brain power"
+  },
+  "BRAND": {
+    "p": "/brænd/",
+    "s": "n./v.",
+    "e": "a type of product; mark with a brand",
+    "ex": "brand name"
+  },
+  "BRAVE": {
+    "p": "/breɪv/",
+    "s": "adj.",
+    "e": "ready to face danger or pain",
+    "ex": "brave soldier"
+  },
+  "BREAD": {
+    "p": "/bred/",
+    "s": "n.",
+    "e": "a staple food made of flour and water",
+    "ex": "slice of bread"
+  },
+  "BREAK": {
+    "p": "/breɪk/",
+    "s": "v./n.",
+    "e": "separate into pieces; an interval",
+    "ex": "take a break"
+  },
+  "BREED": {
+    "p": "/briːd/",
+    "s": "v./n.",
+    "e": "produce offspring; a variety of animals",
+    "ex": "breed cattle"
+  },
+  "BRIBE": {
+    "p": "/braɪb/",
+    "s": "n./v.",
+    "e": "money offered to influence someone",
+    "ex": "bribe a judge"
+  },
+  "BRICK": {
+    "p": "/brɪk/",
+    "s": "n.",
+    "e": "a small rectangular block used in building",
+    "ex": "brick wall"
+  },
+  "BRIDE": {
+    "p": "/braɪd/",
+    "s": "n.",
+    "e": "a woman on her wedding day",
+    "ex": "beautiful bride"
+  },
+  "BRING": {
+    "p": "/brɪŋ/",
+    "s": "v.",
+    "e": "carry or convey to a place",
+    "ex": "bring me water"
+  },
+  "BRISK": {
+    "p": "/brɪsk/",
+    "s": "adj.",
+    "e": "active and energetic",
+    "ex": "brisk walk"
+  },
+  "BROAD": {
+    "p": "/brɔːd/",
+    "s": "adj.",
+    "e": "wide; general",
+    "ex": "broad smile"
+  },
+  "BROIL": {
+    "p": "/brɔɪl/",
+    "s": "v.",
+    "e": "cook with direct heat",
+    "ex": "broil fish"
+  },
+  "BROKE": {
+    "p": "/broʊk/",
+    "s": "adj.",
+    "e": "having no money",
+    "ex": "flat broke"
+  },
+  "BROOK": {
+    "p": "/brʊk/",
+    "s": "n./v.",
+    "e": "a small stream; tolerate",
+    "ex": "brook no argument"
+  },
+  "BROOM": {
+    "p": "/bruːm/",
+    "s": "n.",
+    "e": "a long-handled sweeping brush",
+    "ex": "witch's broom"
+  },
+  "BROTH": {
+    "p": "/brɔːθ/",
+    "s": "n.",
+    "e": "soup consisting of meat or vegetables in liquid",
+    "ex": "chicken broth"
+  },
+  "BROWN": {
+    "p": "/braʊn/",
+    "s": "adj./n.",
+    "e": "of a color produced by mixing red, yellow, and black",
+    "ex": "brown bread"
+  },
+  "BRUSH": {
+    "p": "/brʌʃ/",
+    "s": "n./v.",
+    "e": "an implement with bristles; apply with a brush",
+    "ex": "paint brush"
+  },
+  "BUDDY": {
+    "p": "/ˈbʌdi/",
+    "s": "n.",
+    "e": "a close friend",
+    "ex": "buddies forever"
+  },
+  "BUDGET": {
+    "p": "/ˈbʌdʒɪt/",
+    "s": "n.",
+    "e": "an estimate of income and expenditure",
+    "ex": "tight budget"
+  },
+  "BUILD": {
+    "p": "/bɪld/",
+    "s": "v.",
+    "e": "construct by putting parts together",
+    "ex": "build a house"
+  },
+  "BUILT": {
+    "p": "/bɪlt/",
+    "s": "adj.",
+    "e": "constructed; made",
+    "ex": "well-built"
+  },
+  "BUNCH": {
+    "p": "/bʌntʃ/",
+    "s": "n.",
+    "e": "a number of things grouped together",
+    "ex": "bunch of flowers"
+  },
+  "BURST": {
+    "p": "/bɜːrst/",
+    "s": "v./n.",
+    "e": "break open suddenly; an outbreak",
+    "ex": "burst into tears"
+  },
+  "BUTCH": {
+    "p": "/bʊtʃ/",
+    "s": "adj.",
+    "e": "having a tough, masculine appearance",
+    "ex": "butch haircut"
+  },
+  "BUYER": {
+    "p": "/ˈbaɪər/",
+    "s": "n.",
+    "e": "a person who buys",
+    "ex": "home buyer"
+  },
+  "CABIN": {
+    "p": "/ˈkæbɪn/",
+    "s": "n.",
+    "e": "a small shelter; a private room on a ship",
+    "ex": "log cabin"
+  },
+  "CABLE": {
+    "p": "/ˈkeɪbl/",
+    "s": "n.",
+    "e": "a thick rope of wire; a telegram",
+    "ex": "cable TV"
+  },
+  "CANDY": {
+    "p": "/ˈkændi/",
+    "s": "n.",
+    "e": "a sweet food made with sugar",
+    "ex": "candy store"
+  },
+  "CANOE": {
+    "p": "/kəˈnuː/",
+    "s": "n.",
+    "e": "a narrow boat propelled by paddles",
+    "ex": "paddle a canoe"
+  },
+  "CAROL": {
+    "p": "/ˈkærəl/",
+    "s": "n.",
+    "e": "a religious folk song or hymn",
+    "ex": "Christmas carol"
+  },
+  "CARRY": {
+    "p": "/ˈkæri/",
+    "s": "v.",
+    "e": "support and move from one place to another",
+    "ex": "carry a bag"
+  },
+  "CASTE": {
+    "p": "/kæst/",
+    "s": "n.",
+    "e": "a social class system",
+    "ex": "caste system"
+  },
+  "CAUSE": {
+    "p": "/kɔːz/",
+    "s": "n./v.",
+    "e": "a person or thing that makes something happen",
+    "ex": "cause of death"
+  },
+  "CEASE": {
+    "p": "/siːs/",
+    "s": "v.",
+    "e": "stop; come to an end",
+    "ex": "cease fire"
+  },
+  "CHAIN": {
+    "p": "/tʃeɪn/",
+    "s": "n./v.",
+    "e": "a series of connected links; fasten",
+    "ex": "chain of events"
+  },
+  "CHAIR": {
+    "p": "/tʃer/",
+    "s": "n.",
+    "e": "a separate seat for one person",
+    "ex": "sit in a chair"
+  },
+  "CHARM": {
+    "p": "/tʃɑːrm/",
+    "s": "n./v.",
+    "e": "the power to delight; attractiveness",
+    "ex": "lucky charm"
+  },
+  "CHART": {
+    "p": "/tʃɑːrt/",
+    "s": "n.",
+    "e": "a sheet of information in diagram form",
+    "ex": "flow chart"
+  },
+  "CHASE": {
+    "p": "/tʃeɪs/",
+    "s": "v./n.",
+    "e": "pursue in order to catch",
+    "ex": "chase a thief"
+  },
+  "CHEAP": {
+    "p": "/tʃiːp/",
+    "s": "adj.",
+    "e": "low in price; of poor quality",
+    "ex": "cheap hotel"
+  },
+  "CHEAT": {
+    "p": "/tʃiːt/",
+    "s": "v./n.",
+    "e": "act dishonestly to gain advantage",
+    "ex": "cheat on a test"
+  },
+  "CHECK": {
+    "p": "/tʃek/",
+    "s": "v./n.",
+    "e": "examine; a pattern of squares",
+    "ex": "check your work"
+  },
+  "CHEER": {
+    "p": "/tʃɪr/",
+    "s": "v./n.",
+    "e": "shout for joy; a cry of approval",
+    "ex": "cheer up"
+  },
+  "CHESS": {
+    "p": "/tʃes/",
+    "s": "n.",
+    "e": "a board game for two players",
+    "ex": "play chess"
+  },
+  "CHIEF": {
+    "p": "/tʃiːf/",
+    "s": "n./adj.",
+    "e": "a leader; most important",
+    "ex": "chief executive"
+  },
+  "CHILD": {
+    "p": "/tʃaɪld/",
+    "s": "n.",
+    "e": "a young human being below the age of puberty",
+    "ex": "child care"
+  },
+  "CHILL": {
+    "p": "/tʃɪl/",
+    "s": "n./v.",
+    "e": "a moderate coldness; make cool",
+    "ex": "chill out"
+  },
+  "CHINA": {
+    "p": "/ˈtʃaɪnə/",
+    "s": "n.",
+    "e": "fine ceramic ware",
+    "ex": "china cup"
+  },
+  "CHIP": {
+    "p": "/tʃɪp/",
+    "s": "n.",
+    "e": "a small piece broken off; a fried potato slice",
+    "ex": "potato chip"
+  },
+  "CHOIR": {
+    "p": "/ˈkwaɪər/",
+    "s": "n.",
+    "e": "an organized group of singers",
+    "ex": "church choir"
+  },
+  "CHORD": {
+    "p": "/kɔːrd/",
+    "s": "n.",
+    "e": "a group of notes played together",
+    "ex": "play a chord"
+  },
+  "CHOSE": {
+    "p": "/tʃoʊz/",
+    "s": "v.",
+    "e": "past tense of choose",
+    "ex": "she chose well"
+  },
+  "CHUNK": {
+    "p": "/tʃʌŋk/",
+    "s": "n.",
+    "e": "a thick solid piece",
+    "ex": "chunk of meat"
+  },
+  "CIVIL": {
+    "p": "/ˈsɪvl/",
+    "s": "adj.",
+    "e": "relating to citizens; polite",
+    "ex": "civil war"
+  },
+  "CLASH": {
+    "p": "/klæʃ/",
+    "s": "v./n.",
+    "e": "disagree strongly; conflict",
+    "ex": "clash with police"
+  },
+  "CLASS": {
+    "p": "/klæs/",
+    "s": "n.",
+    "e": "a set with common attributes; a lesson",
+    "ex": "business class"
+  },
+  "CLEAN": {
+    "p": "/kliːn/",
+    "s": "adj./v.",
+    "e": "free from dirt; make clean",
+    "ex": "clean water"
+  },
+  "CLEAR": {
+    "p": "/klɪr/",
+    "s": "adj./v.",
+    "e": "easy to perceive; remove obstructions",
+    "ex": "clear sky"
+  },
+  "CLICK": {
+    "p": "/klɪk/",
+    "s": "v./n.",
+    "e": "a short sharp sound; press a button",
+    "ex": "click here"
+  },
+  "CLIFF": {
+    "p": "/klɪf/",
+    "s": "n.",
+    "e": "a steep rock face",
+    "ex": "cliff edge"
+  },
+  "CLIMB": {
+    "p": "/klaɪm/",
+    "s": "v.",
+    "e": "go up; ascend",
+    "ex": "climb a mountain"
+  },
+  "CLING": {
+    "p": "/klɪŋ/",
+    "s": "v.",
+    "e": "hold tightly; refuse to let go",
+    "ex": "cling to hope"
+  },
+  "CLOCK": {
+    "p": "/klɑːk/",
+    "s": "n.",
+    "e": "a device for measuring time",
+    "ex": "wall clock"
+  },
+  "CLOSE": {
+    "p": "/kloʊz/",
+    "s": "v./adj.",
+    "e": "shut; near; intimate",
+    "ex": "close the door"
+  },
+  "CLOTH": {
+    "p": "/klɔːθ/",
+    "s": "n.",
+    "e": "woven fabric",
+    "ex": "table cloth"
+  },
+  "CLOUD": {
+    "p": "/klaʊd/",
+    "s": "n.",
+    "e": "a visible mass of water vapor in the sky",
+    "ex": "rain cloud"
+  },
+  "CLOWN": {
+    "p": "/klaʊn/",
+    "s": "n.",
+    "e": "a comic entertainer",
+    "ex": "circus clown"
+  },
+  "CLUE": {
+    "p": "/kluː/",
+    "s": "n.",
+    "e": "a piece of evidence that leads to a solution",
+    "ex": "find a clue"
+  },
+  "CLUMP": {
+    "p": "/klʌmp/",
+    "s": "n.",
+    "e": "a clustered mass",
+    "ex": "clump of trees"
+  },
+  "COAST": {
+    "p": "/koʊst/",
+    "s": "n./v.",
+    "e": "land near the sea; move without effort",
+    "ex": "Pacific coast"
+  },
+  "COAT": {
+    "p": "/koʊt/",
+    "s": "n.",
+    "e": "an outer garment with sleeves",
+    "ex": "winter coat"
+  },
+  "CODE": {
+    "p": "/koʊd/",
+    "s": "n.",
+    "e": "a system of words, letters, or symbols",
+    "ex": "secret code"
+  },
+  "COIN": {
+    "p": "/kɔɪn/",
+    "s": "n.",
+    "e": "a flat disc of metal used as money",
+    "ex": "gold coin"
+  },
+  "COLD": {
+    "p": "/koʊld/",
+    "s": "adj./n.",
+    "e": "of low temperature; common cold",
+    "ex": "cold weather"
+  },
+  "COLOR": {
+    "p": "/ˈkʌlər/",
+    "s": "n.",
+    "e": "the property of an object that produces sensations on the eye",
+    "ex": "bright color"
+  },
+  "COMET": {
+    "p": "/ˈkɑːmɪt/",
+    "s": "n.",
+    "e": "a celestial body with a tail",
+    "ex": "Halley's comet"
+  },
+  "COMIC": {
+    "p": "/ˈkɑːmɪk/",
+    "s": "adj./n.",
+    "e": "causing laughter; a comedian",
+    "ex": "comic book"
+  },
+  "CORAL": {
+    "p": "/ˈkɔːrəl/",
+    "s": "n.",
+    "e": "a hard substance formed by sea creatures",
+    "ex": "coral reef"
+  },
+  "COUCH": {
+    "p": "/kaʊtʃ/",
+    "s": "n.",
+    "e": "a long upholstered seat for two or more",
+    "ex": "leather couch"
+  },
+  "COUGH": {
+    "p": "/kɔːf/",
+    "s": "v./n.",
+    "e": "expel air from the lungs abruptly",
+    "ex": "dry cough"
+  },
+  "COULD": {
+    "p": "/kʊd/",
+    "s": "modal",
+    "e": "past of can: ability, possibility, permission",
+    "ex": "I could go"
+  },
+  "COUNT": {
+    "p": "/kaʊnt/",
+    "s": "v./n.",
+    "e": "determine the number; a nobleman",
+    "ex": "count to ten"
+  },
+  "COURT": {
+    "p": "/kɔːrt/",
+    "s": "n.",
+    "e": "a tribunal for civil and criminal cases",
+    "ex": "supreme court"
+  },
+  "COVER": {
+    "p": "/ˈkʌvər/",
+    "s": "v./n.",
+    "e": "put something over; a lid",
+    "ex": "book cover"
+  },
+  "CRACK": {
+    "p": "/kræk/",
+    "s": "n./v.",
+    "e": "a narrow opening; break without separation",
+    "ex": "crack an egg"
+  },
+  "CRAFT": {
+    "p": "/kræft/",
+    "s": "n./v.",
+    "e": "a skilled trade; make skillfully",
+    "ex": "arts and crafts"
+  },
+  "CRANE": {
+    "p": "/kreɪn/",
+    "s": "n.",
+    "e": "a large tall machine for lifting; a bird",
+    "ex": "construction crane"
+  },
+  "CRASH": {
+    "p": "/kræʃ/",
+    "s": "v./n.",
+    "e": "collide violently; a loud noise",
+    "ex": "car crash"
+  },
+  "CRAVE": {
+    "p": "/kreɪv/",
+    "s": "v.",
+    "e": "feel a powerful desire for",
+    "ex": "crave chocolate"
+  },
+  "CRAWL": {
+    "p": "/krɔːl/",
+    "s": "v.",
+    "e": "move on hands and knees",
+    "ex": "baby crawl"
+  },
+  "CRAZY": {
+    "p": "/ˈkreɪzi/",
+    "s": "adj.",
+    "e": "mad; foolish",
+    "ex": "crazy idea"
+  },
+  "CREAM": {
+    "p": "/kriːm/",
+    "s": "n.",
+    "e": "the fatty part of milk; a pale yellow color",
+    "ex": "ice cream"
+  },
+  "CREED": {
+    "p": "/kriːd/",
+    "s": "n.",
+    "e": "a system of religious belief",
+    "ex": "creed of faith"
+  },
+  "CREEK": {
+    "p": "/kriːk/",
+    "s": "n.",
+    "e": "a small stream",
+    "ex": "fishing creek"
+  },
+  "CREEP": {
+    "p": "/kriːp/",
+    "s": "v.",
+    "e": "move slowly and carefully",
+    "ex": "creep up on"
+  },
+  "CREPE": {
+    "p": "/kreɪp/",
+    "s": "n.",
+    "e": "a thin pancake; a crinkled fabric",
+    "ex": "crepe paper"
+  },
+  "CREST": {
+    "p": "/krest/",
+    "s": "n.",
+    "e": "a plume on a helmet; the top of a wave",
+    "ex": "family crest"
+  },
+  "CRIME": {
+    "p": "/kraɪm/",
+    "s": "n.",
+    "e": "an illegal act",
+    "ex": "violent crime"
+  },
+  "CRISP": {
+    "p": "/krɪsp/",
+    "s": "adj.",
+    "e": "firm and dry; sharp and clear",
+    "ex": "crisp apple"
+  },
+  "CROSS": {
+    "p": "/krɔːs/",
+    "s": "n./v.",
+    "e": "a symbol of Christianity; go across",
+    "ex": "red cross"
+  },
+  "CROWD": {
+    "p": "/kraʊd/",
+    "s": "n.",
+    "e": "a large number of people gathered",
+    "ex": "large crowd"
+  },
+  "CROWN": {
+    "p": "/kraʊn/",
+    "s": "n.",
+    "e": "a circular headdress worn by a monarch",
+    "ex": "queen's crown"
+  },
+  "CRUDE": {
+    "p": "/kruːd/",
+    "s": "adj.",
+    "e": "in a natural state; vulgar",
+    "ex": "crude oil"
+  },
+  "CRUEL": {
+    "p": "/ˈkruːəl/",
+    "s": "adj.",
+    "e": "causing pain or suffering",
+    "ex": "cruel punishment"
+  },
+  "CRUSH": {
+    "p": "/krʌʃ/",
+    "s": "v./n.",
+    "e": "compress with force; infatuation",
+    "ex": "crush ice"
+  },
+  "CRUST": {
+    "p": "/krʌst/",
+    "s": "n.",
+    "e": "the outer layer of bread or pastry",
+    "ex": "pie crust"
+  },
+  "CRYPT": {
+    "p": "/krɪpt/",
+    "s": "n.",
+    "e": "an underground room used as a burial place",
+    "ex": "ancient crypt"
+  },
+  "CUBIC": {
+    "p": "/ˈkjuːbɪk/",
+    "s": "adj.",
+    "e": "having the shape of a cube",
+    "ex": "cubic meter"
+  },
+  "CURLY": {
+    "p": "/ˈkɜːrli/",
+    "s": "adj.",
+    "e": "forming curls",
+    "ex": "curly hair"
+  },
+  "CURRY": {
+    "p": "/ˈkɜːri/",
+    "s": "n.",
+    "e": "a dish of meat or vegetables in spiced sauce",
+    "ex": "chicken curry"
+  },
+  "CURSE": {
+    "p": "/kɜːrs/",
+    "s": "n./v.",
+    "e": "a magical invocation; swear word",
+    "ex": "put a curse on"
+  },
+  "CYCLE": {
+    "p": "/ˈsaɪkl/",
+    "s": "n./v.",
+    "e": "a series of events; ride a bicycle",
+    "ex": "life cycle"
+  }
 };
+
