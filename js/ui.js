@@ -2,7 +2,7 @@
 
 // 首页难度 tab
 function buildDiffTabs(){const tabs=document.getElementById('diffTabs');tabs.innerHTML='';DIFFICULTIES.forEach(d=>{const b=document.createElement('button');b.className='diff-tab'+(State.diff===d.id?' active':'');b.textContent=d.name;b.onclick=()=>{State.diff=d.id;buildDiffTabs();updateHomeCounts()};tabs.appendChild(b)})}
-function updateHomeCounts(){const now=new Date();const dateStr=(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0')+' '+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+'.';document.getElementById('signinDate').textContent=dateStr;const k=State.diff+'_'+State.len+'_'+State.timed+'_'+State.excludeCount+'_'+State.hints;const s=State.stats[k];document.getElementById('gameCount').textContent=s?s.played:0}
+function updateHomeCounts(){const now=new Date();const dateStr=(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0')+' '+['日','一','二','三','四','五','六'][now.getDay()];const sd=document.getElementById('signinDate');if(sd)sd.textContent=dateStr;const k=State.diff+'_'+State.len+'_'+State.timed+'_'+State.excludeCount+'_'+State.hints;const s=State.stats[k];const gc=document.getElementById('gameCount');if(gc)gc.textContent=(s?s.played:0)+' 局';const sg=loadSignin();const ss=document.getElementById('signinStreak');if(ss)ss.textContent=sg.streak||0;const sub=document.getElementById('signinSub');if(sub)sub.textContent=sg.lastDate===dateKey(now)?'今日已签到':'点击签到'}
 
 // 设置面板
 function openSettings(){document.getElementById('settingsPanel').classList.add('show');buildSpOptions()}
@@ -131,5 +131,5 @@ document.getElementById('closeDict').onclick=hideModal;
 }
 
 // 页面切换
-function showHome(){stopTimer();document.getElementById('home').classList.remove('hidden');document.getElementById('game').classList.remove('show');document.getElementById('tabHome').classList.add('active');document.getElementById('tabBook').classList.remove('active');document.getElementById('tabStats').classList.remove('active');buildDiffTabs();updateHomeCounts()}
+function showHome(){stopTimer();document.getElementById('home').classList.remove('hidden');document.getElementById('game').classList.remove('show');buildDiffTabs();updateHomeCounts()}
 function showGame(){document.getElementById('home').classList.add('hidden');document.getElementById('game').classList.add('show')}

@@ -12,7 +12,6 @@ function bindEvents(){
 document.getElementById('avatarBtn').onclick=openSettings;
 document.getElementById('signinBtn').onclick=doSignin;
 document.getElementById('startBtn').onclick=doStart;
-document.getElementById('tabHome').onclick=showHome;
 document.getElementById('tabBook').onclick=showLibrary;
 document.getElementById('tabStats').onclick=showStats;
 document.getElementById('spClose').onclick=closeSettings;
@@ -20,7 +19,6 @@ document.getElementById('spGo').onclick=()=>{closeSettings();if(newGame()){showG
 document.getElementById('homeBtn').onclick=()=>{hideModal();showHome()};
 document.getElementById('helpBtn').onclick=showHelp;
 document.getElementById('statsBtn').onclick=showStats;
-document.getElementById('themeBtn').onclick=toggleTheme;
 document.getElementById('hintBtn').onclick=useHint;
 document.getElementById('excludeBtn').onclick=useExclude;
 document.getElementById('surrenderBtn').onclick=surrender;

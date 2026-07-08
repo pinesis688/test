@@ -3,28 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>Wordle 中文版</title>
+<title>Wordle</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="home" class="screen">
-<button class="avatar" id="avatarBtn" title="设置">🎮</button>
+<div class="topbar">
+<button class="top-btn" id="avatarBtn" title="设置" aria-label="设置">
+<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</button>
+<div class="brand">Wordle</div>
 <div class="diff-tabs" id="diffTabs"></div>
-<button class="signin-card" id="signinBtn">
-<div class="signin-icon">📅</div>
-<div class="signin-text">签到</div>
-<div class="signin-date" id="signinDate">--/-- ---.</div>
-</button>
-<div class="bottom-actions">
-<button class="action-card primary" id="startBtn">
-<div class="action-label">开始游戏</div>
-<div class="action-count" id="gameCount">0</div>
-</button>
 </div>
-<div class="tabbar">
-<button class="tab" id="tabHome" title="首页">🏠</button>
-<button class="tab" id="tabBook" title="词库">📚</button>
-<button class="tab" id="tabStats" title="统计">📊</button>
+<div class="home-body">
+<button class="signin-card" id="signinBtn">
+<div class="signin-row">
+<div class="signin-cal">📅</div>
+<div class="signin-meta">
+<div class="signin-text" id="signinDate">--/--</div>
+<div class="signin-sub" id="signinSub">点击签到</div>
+</div>
+<div class="signin-streak" id="signinStreak">0</div>
+</div>
+</button>
+<div class="quick-row">
+<button class="quick-btn" id="tabBook">📚 词库</button>
+<button class="quick-btn" id="tabStats">📊 统计</button>
+</div>
+<div class="home-spacer"></div>
+<button class="start-btn" id="startBtn">
+<span class="start-label">开始游戏</span>
+<span class="start-count" id="gameCount">0 局</span>
+</button>
 </div>
 </div>
 
@@ -45,9 +55,9 @@
 
 <div id="game">
 <header>
-<div class="hl"><button class="ib" id="homeBtn" title="返回">🏠</button><button class="ib" id="helpBtn" title="帮助">?</button></div>
+<div class="hl"><button class="ib" id="homeBtn" title="返回">←</button><button class="ib" id="helpBtn" title="帮助">?</button></div>
 <h1>Wordle</h1>
-<div class="hr"><button class="ib" id="dictBtn" title="查词">📖</button><button class="ib" id="themeBtn" title="主题">🌙</button><button class="ib" id="statsBtn" title="统计">📊</button></div>
+<div class="hr"><button class="ib" id="dictBtn" title="查词">📖</button><button class="ib" id="statsBtn" title="统计">📊</button></div>
 </header>
 <div class="gbar">
 <div class="gi" id="gameInfo"></div>
