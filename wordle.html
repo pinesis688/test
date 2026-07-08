@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Wordle</title>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #ffffff;
+      --text: #1a1a1b;
+      --border: #d3d6da;
+      --tile-border: #878a8c;
+      --tile-filled: #878a8c;
+      --key-bg: #d3d6da;
+      --key-text: #1a1a1b;
+      --correct: #6aaa64;
+      --present: #c9b458;
+      --absent: #787c7e;
+      --absent-key: #868a8e;
+      --modal-bg: #ffffff;
+      --shadow: rgba(0, 0, 0, 0.15);
+    }
+
+    body.dark {
+      --bg: #121213;
+      --text: #ffffff;
+      --border: #3a3a3c;
+      --tile-border: #3a3a3c;
+      --tile-filled: #565758;
+      --key-bg: #818384;
+      --key-text: #ffffff;
+      --correct: #538d4e;
+      --present: #b59f3b;
+      --absent: #3a3a3c;
+      --absent-key: #3a3a3c;
+      --modal-bg: #2a2a2b;
+      --shadow: rgba(0, 0, 0, 0.5);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Helvetica Neue', Helvetica, Arial, -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ==================== 顶部栏 ==================== */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .header-left, .header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 90px;
+    }
+
+    .header-right {
+      justify-content: flex-end;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 22px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    .icon-btn:hover {
+      background: var(--border);
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* ==================== 消息提示 ==================== */
+    #toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      background: var(--text);
+      color: var(--bg);
+      padding: 10px 18px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 100;
+      box-shadow: 0 2px 10px var(--shadow);
+      text-transform: uppercase;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ==================== 游戏主区 ==================== */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      max-width: 500px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ==================== 网格 ==================== */
+    #board {
+      display: grid;
+      grid-template-rows: repeat(6, 1fr);
+      gap: 5px;
+      padding: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+    }
+
+    .tile {
+      width: 62px;
+      height: 62px;
+      border: 2px solid var(--tile-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 700;
+      text-transform: uppercase;
+      user-select: none;
+      transition: transform 0.1s, border-color 0.15s;
+    }
+
+    .tile.filled {
+      border-color: var(--tile-filled);
+      animation: pop 0.12s ease;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    /* 翻转动画 */
+    .tile.flip {
+      animation: flip 0.6s ease forwards;
+    }
+
+    @keyframes flip {
+      0% { transform: rotateX(0); }
+      50% { transform: rotateX(90deg); }
+      100% { transform: rotateX(0); }
+    }
+
+    .tile.correct {
+      background: var(--correct);
+      border-color: var(--correct);
+      color: #fff;
+    }
+
+    .tile.present {
+      background: var(--present);
+      border-color: var(--present);
+      color: #fff;
+    }
+
+    .tile.absent {
+      background: var(--absent);
+      border-color: var(--absent);
+      color: #fff;
+    }
+
+    /* 抖动动画（无效单词） */
+    .row.shake {
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+
+    /* 胜利弹跳 */
+    .tile.win {
+      animation: bounce 0.5s ease;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-20px); }
+      60% { transform: translateY(0); }
+    }
+
+    /* ==================== 键盘 ==================== */
+    #keyboard {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 6px 12px;
+      width: 100%;
+      max-width: 500px;
+      user-select: none;
+    }
+
+    .keyboard-row {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .key {
+      flex: 1;
+      max-width: 44px;
+      height: 58px;
+      background: var(--key-bg);
+      color: var(--key-text);
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: transform 0.08s, background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      font-family: inherit;
+    }
+
+    .key:active {
+      transform: scale(0.92);
+    }
+
+    .key.wide {
+      flex: 1.5;
+      max-width: 70px;
+      font-size: 12px;
+    }
+
+    .key.correct {
+      background: var(--correct);
+      color: #fff;
+    }
+
+    .key.present {
+      background: var(--present);
+      color: #fff;
+    }
+
+    .key.absent {
+      background: var(--absent-key);
+      color: #fff;
+    }
+
+    /* ==================== 模态框 ==================== */
+    #modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 16px;
+    }
+
+    #modal.show {
+      display: flex;
+      animation: fadein 0.2s ease;
+    }
+
+    @keyframes fadein {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: var(--modal-bg);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 28px 24px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 24px var(--shadow);
+      animation: slidein 0.25s ease;
+    }
+
+    @keyframes slidein {
+      from { transform: translateY(-30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .modal-subtitle {
+      font-size: 14px;
+      margin-bottom: 20px;
+      opacity: 0.85;
+    }
+
+    .modal-word {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 12px;
+      background: var(--bg);
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-num {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+
+    .dist-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+
+    .dist-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+
+    .dist-num {
+      width: 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .dist-bar {
+      flex: 1;
+      background: var(--absent);
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-weight: 700;
+      text-align: right;
+      min-width: 24px;
+      min-height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .dist-bar.highlight {
+      background: var(--correct);
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+
+    .modal-btn:active {
+      transform: scale(0.96);
+    }
+
+    .modal-btn.primary {
+      background: var(--correct);
+      color: #fff;
+    }
+
+    .modal-btn.secondary {
+      background: var(--key-bg);
+      color: var(--key-text);
+    }
+
+    /* 帮助模态 */
+    .help-list {
+      text-align: left;
+      margin-bottom: 20px;
+    }
+
+    .help-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .help-tiles {
+      display: flex;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .help-tile {
+      width: 26px;
+      height: 26px;
+      border: 2px solid var(--tile-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .help-tile.correct { background: var(--correct); border-color: var(--correct); color: #fff; }
+    .help-tile.present { background: var(--present); border-color: var(--present); color: #fff; }
+    .help-tile.absent { background: var(--absent); border-color: var(--absent); color: #fff; }
+
+    .help-text {
+      flex: 1;
+    }
+
+    .help-text b {
+      font-weight: 700;
+    }
+
+    .help-close {
+      width: 100%;
+      padding: 14px;
+      background: var(--correct);
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* ==================== 响应式 ==================== */
+    @media (max-width: 420px) {
+      .tile {
+        width: 52px;
+        height: 52px;
+        font-size: 28px;
+      }
+      .key {
+        height: 52px;
+        font-size: 14px;
+      }
+      .key.wide {
+        font-size: 11px;
+      }
+      h1 { font-size: 24px; }
+    }
+
+    @media (max-width: 360px) {
+      .tile {
+        width: 46px;
+        height: 46px;
+        font-size: 24px;
+      }
+      .key {
+        height: 48px;
+        max-width: 38px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <button class="icon-btn" id="helpBtn" title="帮助">?</button>
+    </div>
+    <h1>Wordle</h1>
+    <div class="header-right">
+      <button class="icon-btn" id="themeBtn" title="切换主题">🌙</button>
+      <button class="icon-btn" id="statsBtn" title="统计">📊</button>
+    </div>
+  </header>
+
+  <div id="toast"></div>
+
+  <main>
+    <div id="board"></div>
+    <div id="keyboard"></div>
+  </main>
+
+  <!-- 游戏结束模态 -->
+  <div id="modal">
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+
+  <script>
+    'use strict';
+
+    // ==================== 词库 ====================
+    // 答案词库（常用 5 字母单词）
+    const ANSWERS = [
+      "ABOUT","OTHER","WHICH","THEIR","THERE","WORLD","WOULD","COULD","SHOULD","LIGHT",
+      "NIGHT","RIGHT","FIRST","WATER","AFTER","WHERE","UNDER","YEARS","PLACE","PHONE",
+      "LEARN","CHANGE","AGAIN","POINT","HOUSE","NEVER","FOCUS","FRONT","GIVEN","WOMAN",
+      "POWER","HAPPY","STORY","LEAVE","BLACK","WHITE","SPACE","GREEN","PLANT","GROUND",
+      "BOOKS","MUSIC","HEART","DREAM","SMILE","BREAD","CLOUD","STORM","OCEAN","RIVER",
+      "MOUNT","FIELD","TABLE","CHAIR","DOORS","FLOOR","ROOF","PAPER","GLASS","STONE",
+      "BRAVE","CLEAN","CRAFT","DANCE","EARTH","FAITH","GHOST","HONEY","IDEAL","JOKER",
+      "KNIFE","MAGIC","NOBLE","OASIS","PIANO","QUEEN","ROYAL","SHINE","TIGER","UNITY",
+      "VOICE","WHEAT","YOUTH","ZEBRA","ALERT","BLAZE","CRISP","DAISY","EBONY","FLAME",
+      "GRAPE","HAVEN","IVORY","JOLLY","KARMA","LASER","MERRY","NORTH","OPERA","PRIDE",
+      "QUILT","RAVEN","SUGAR","TRUST","ULTRA","VITAL","WORTH","YACHT","ANGLE","BLADE",
+      "CHESS","DRAFT","ELITE","FROST","GIANT","HOTEL","INPUT","JUDGE","KNEEL","LUNAR",
+      "MOUSE","NOVEL","ORBIT","PEARL","QUICK","RADIO","SHARP","TOWER","UNCLE","VIVID",
+      "WAGON","YIELD","APPLE","BEACH","CANDY","DEPTH","EQUAL","FENCE","GLOBE","HORSE",
+      "IMAGE","JEWEL","KAYAK","LEMON","MANGO","NINJA","OZONE","PARTY","QUIRK","ROBOT",
+      "SALAD","THINK","UDDER","VAPOR","WHALE","YOUNG","ARROW","BLOCK","CLOCK","DRINK",
+      "EAGLE","FUNNY","GUEST","HEAVY","IRONY","JUICE","KNOCK","LIVER","MOVIE","NURSE",
+      "OLIVE","PAINT","QUERY","ROUGH","SILLY","TASTY","UPSET","VOTER","WIDOW","YUMMY",
+      "ALONE","BEGAN","CHEER","DAILY","EMPTY","FANCY","GLOVE","HOTLY","IDEAL","JELLY",
+      "KIOSK","LARGE","MEDAL","NEVER","OFTEN","PRISM","QUACK","RANGE","SWEET","TWICE",
+      "UNCUT","VAULT","WAVES","YEARN","ZESTY","BLAND","CLIMB","DOZEN","ENJOY","FLUID",
+      "GRACE","HOVER","ICILY","JOUST","KNEEL","LATEX","MAYBE","NEEDS","OUGHT","PIVOT",
+      "QUASH","RAINY","SPICE","TEMPO","UNTIL","VIEWS","WIDER","YELLS","ZONES","BLAST",
+      "CABIN","DEALT","ELBOW","FERRY","GLORY","HUMID","INNER","JOINT","KNELT","LUCID",
+      "MERIT","NIFTY","OUTER","PLAZA","QUIET","RIDGE","SHIFT","TRACK","UPPER","VERGE"
+    ];
+
+    // 有效猜测词库（额外允许的非答案词）
+    const EXTRA_VALID = [
+      "AAHED","ABACK","ABASE","ABATE","ABBEY","ABBOT","ABHOR","ABIDE","ABLED","ABODE",
+      "ABORT","ABUSE","ABYSS","ACORN","ACRID","ACTOR","ACUTE","ADAGE","ADAPT","ADEPT",
+      "ADMIN","ADMIT","ADOBE","ADOPT","ADORE","ADORN","ADULT","AFFIX","AFIRE","AFOOT",
+      "AFOUL","AFTER","AGAIN","AGAPE","AGATE","AGENT","AGILE","AGING","AGLOW","AGONY",
+      "AGREE","AHEAD","AIDED","AISLE","ALARM","ALBUM","ALERT","ALGAE","ALIBI","ALIEN",
+      "ALIGN","ALIKE","ALIVE","ALLAY","ALLEY","ALLOT","ALLOW","ALLOY","ALOFT","ALOHA",
+      "ALONE","ALONG","ALOOF","ALOUD","ALPHA","ALTAR","ALTER","AMASS","AMAZE","AMBER",
+      "AMBLE","AMEND","AMISS","AMITY","AMONG","AMPLE","AMPLY","AMUSE","ANGER","ANGLE",
+      "ANGRY","ANGST","ANIME","ANKLE","ANNEX","ANNOY","ANNUL","ANODE","ANTIC","ANVIL",
+      "AORTA","APART","APHID","APING","APNEA","APPLE","APPLY","APRON","APTLY","ARBOR",
+      "ARDOR","ARENA","ARGUE","ARISE","ARMED","AROMA","AROSE","ARRAY","ARROW","ARSON",
+      "ARTSY","ASCOT","ASHEN","ASIDE","ASKEW","ASSAY","ASSET","ATOLL","ATONE","AUDIO",
+      "AUDIT","AUGUR","AUNTY","AVAIL","AVERT","AVIAN","AVOID","AWAIT","AWAKE","AWARD",
+      "AWARE","AWASH","AWFUL","AWOKE","AXIAL","AXIOM","AZURE","BACON","BADGE","BADLY",
+      "BAGEL","BAGGY","BAKER","BALER","BALMY","BANAL","BANJO","BARGE","BARON","BASAL",
+      "BASIC","BASIL","BASIN","BASIS","BASTE","BATCH","BATHE","BATON","BATTY","BAWDY",
+      "BAYOU","BEACH","BEADY","BEAST","BEEFY","BEFIT","BEGAN","BEGAT","BEGET","BEGIN",
+      "BESET","BEZEL","BIBLE","BIDDY","BIGOT","BILGE","BILLY","BINGE","BINGO","BIOME",
+      "BIRCH","BIRTH","BISON","BITTY","BLACK","BLADE","BLAME","BLAND","BLANK","BLARE",
+      "BLAST","BLEAK","BLEAT","BLEED","BLEEP","BLEND","BLESS","BLIMP","BLIND","BLINK",
+      "BLISS","BLOAT","BLOCK","BLOKE","BLOND","BLOOD","BLOOM","BLOWN","BLUER","BLUFF",
+      "BLUNT","BLURB","BLURT","BOARD","BOAST","BOBBY","BONEY","BONGO","BONUS","BOOBY",
+      "BOOST","BOOTH","BOOTY","BOOZE","BOOZY","BORAX","BORNE","BOSOM","BOSSY","BOTCH",
+      "BOUGH","BOULE","BOUND","BOWEL","BOXER","BRACE","BRAID","BRAIN","BRAKE","BRAND",
+      "BRASH","BRASS","BRAVE","BRAVO","BRAWL","BRAWN","BREAD","BREAK","BREED","BRIAR",
+      "BRIBE","BRICK","BRIDE","BRIEF","BRINE","BRING","BRINK","BRINY","BRISK","BROAD",
+      "BROIL","BROKE","BROOD","BROOK","BROOM","BROTH","BROWN","BRUNT","BRUSH","BRUTE",
+      "BUDDY","BUDGE","BUGGY","BUGLE","BUILD","BUILT","BULGE","BULKY","BULLY","BUNCH",
+      "BUNNY","BURLY","BURNT","BURST","BUSED","BUSHY","BUTCH","BUTTE","BUZZY","BYLAW",
+      "CABLE","CACAO","CACHE","CACTI","CADDY","CADET","CAGEY","CAIRN","CAMEL","CAMEO",
+      "CANAL","CANDY","CANNY","CANOE","CANON","CAPER","CAPUT","CARAT","CARGO","CAROL",
+      "CARRY","CARVE","CASTE","CATCH","CATER","CATTY","CAULK","CAUSE","CAVIL","CEASE",
+      "CEDAR","CELLO","CHAFE","CHAFF","CHAIN","CHAIR","CHALK","CHAMP","CHANT","CHAOS",
+      "CHARD","CHARM","CHART","CHASE","CHASM","CHEAP","CHEAT","CHECK","CHEEK","CHEER",
+      "CHESS","CHEST","CHICK","CHIDE","CHIEF","CHILD","CHILI","CHILL","CHIME","CHINA",
+      "CHIRP","CHOCK","CHOIR","CHOKE","CHORD","CHORE","CHOSE","CHUCK","CHUMP","CHUNK",
+      "CHURN","CHUTE","CIDER","CIGAR","CINCH","CIRCA","CIVIC","CIVIL","CLACK","CLAIM",
+      "CLAMP","CLANG","CLANK","CLASH","CLASP","CLASS","CLEAN","CLEAR","CLEAT","CLEFT",
+      "CLERK","CLICK","CLIFF","CLIMB","CLING","CLINK","CLOAK","CLOCK","CLONE","CLOSE",
+      "CLOTH","CLOUD","CLOUT","CLOVE","CLOWN","CLUCK","CLUMP","CLUNG","COACH","COAST",
+      "COBRA","COCOA","COLON","COLOR","COMET","COMFY","COMIC","COMMA","CONCH","CONDO",
+      "CONIC","COPSE","CORAL","CORER","CORNY","COUCH","COUGH","COULD","COUNT","COUPE",
+      "COURT","COVEN","COVER","COVET","COWED","COWER","CRACK","CRAFT","CRAMP","CRANE",
+      "CRANK","CRASH","CRASS","CRATE","CRAVE","CRAWL","CRAZE","CRAZY","CREAK","CREAM",
+      "CREDO","CREED","CREEK","CREEP","CREPT","CRESS","CREST","CRICK","CRIED","CRIER",
+      "CRIME","CRIMP","CRISS","CROAK","CROCK","CRONE","CRONY","CROOK","CROSS","CROUP",
+      "CROWD","CROWN","CRUDE","CRUEL","CRUMB","CRUSH","CRUST","CRYPT","CUBIC","CUMIN",
+      "CURIO","CURLY","CURRY","CURSE","CURVE","CURVY","CUTIE","CYBER","CYCLE","CYNIC",
+      "DAFFY","DAILY","DAIRY","DALLY","DANCE","DANDY","DATED","DATER","DATUM","DAUNT",
+      "DEALT","DEATH","DEBAR","DEBIT","DEBUG","DEBUT","DECAL","DECAY","DECOR","DECOY",
+      "DECRY","DEFER","DEIGN","DEITY","DELVE","DEMON","DEMUR","DENIM","DENSE","DEPOT",
+      "DEPTH","DERBY","DETER","DEVIL","DIARY","DICEY","DIGIT","DILLY","DIMLY","DINER",
+      "DINGO","DINGY","DIODE","DIRGE","DIRTY","DISCO","DITCH","DITTO","DITTY","DIVER",
+      "DIZZY","DODGE","DODGY","DOING","DOLLY","DONOR","DONUT","DOPEY","DOUBT","DOUGH",
+      "DOWEL","DOWNY","DOWRY","DOZEN","DRAFT","DRAIN","DRAKE","DRAMA","DRANK","DRAPE",
+      "DRAWL","DRAWN","DREAD","DRESS","DRIED","DRIER","DRIFT","DRILL","DRINK","DRIVE",
+      "DROIT","DROLL","DRONE","DROOL","DROOP","DROSS","DROVE","DROWN","DRUID","DRUNK",
+      "DRYER","DRYLY","DUCHY","DULLY","DUMMY","DUMPY","DUNCE","DUSKY","DUSTY","DUTCH",
+      "DUVET","DWARF","DWELL","DWELT","DYING","EAGER","EAGLE","EARLY","EARTH","EASEL",
+      "EATEN","EATER","ECLAT","EDICT","EDIFY","EERIE","EGRET","EIGHT","EJECT","EKING",
+      "ELATE","ELBOW","ELDER","ELECT","ELEGY","ELFIN","ELIDE","ELITE","ELOPE","ELUDE",
+      "EMAIL","EMBED","EMBER","EMCEE","EMPTY","ENACT","ENDOW","ENEMA","ENEMY","ENJOY",
+      "ENNUI","ENSUE","ENTER","ENTRY","ENVOY","EPOCH","EQUAL","EQUIP","ERASE","ERECT",
+      "ERODE","ERROR","ERUPT","ESSAY","ESTER","ETHER","ETHIC","ETHOS","ETUDE","EVADE",
+      "EVENT","EVERY","EVICT","EVOKE","EXACT","EXALT","EXCEL","EXERT","EXILE","EXIST",
+      "EXTOL","EXULT","EYING","FABLE","FACET","FAINT","FAIRY","FAITH","FALSE","FANCY",
+      "FANNY","FARCE","FATAL","FATTY","FAULT","FAUNA","FAVOR","FEAST","FECAL","FEIGN",
+      "FELLA","FELON","FEMME","FEMUR","FENCE","FERAL","FERRY","FETAL","FETCH","FETID",
+      "FETUS","FEVER","FEWER","FIBER","FICUS","FIELD","FIEND","FIERY","FIFTH","FIFTY",
+      "FIGHT","FINAL","FINCH","FINER","FIRST","FISHY","FIXER","FIZZY","FJORD","FLACK",
+      "FLAIL","FLAIR","FLAKE","FLAKY","FLAME","FLANK","FLARE","FLASH","FLASK","FLECK",
+      "FLEET","FLESH","FLICK","FLIER","FLING","FLINT","FLIRT","FLOAT","FLOCK","FLOOD",
+      "FLOOR","FLORA","FLOSS","FLOUR","FLOUT","FLOWN","FLUFF","FLUID","FLUKE","FLUNG",
+      "FLUNK","FLUSH","FLUTE","FLYER","FOAMY","FOCAL","FOCUS","FOGGY","FOIST","FOLIO",
+      "FOLLY","FORAY","FORCE","FORGE","FORGO","FORTE","FORTH","FORTY","FORUM","FOUND",
+      "FOYER","FRAIL","FRAME","FRANK","FRAUD","FREAK","FREED","FREER","FRESH","FRIAR",
+      "FRIED","FRILL","FRISK","FRITZ","FROCK","FROND","FRONT","FROST","FROTH","FROWN",
+      "FROZE","FRUIT","FUDGE","FUGUE","FULLY","FUNGI","FUNKY","FUNNY","FUROR","FURRY",
+      "FUSSY","FUZZY","GAFFE","GAILY","GAMER","GAMMA","GAMUT","GAUDY","GAUGE","GAUNT",
+      "GAUZE","GAVEL","GAWKY","GAYLY","GECKO","GEESE","GENIE","GENRE","GIRTH","GIVEN",
+      "GIVER","GLADE","GLAND","GLARE","GLASS","GLEAM","GLEAN","GLOOM","GLORY","GLOSS",
+      "GLOVE","GLYPH","GNASH","GNOME","GODLY","GOING","GONAD","GOODY","GOOEY","GOOFY",
+      "GOOSE","GORGE","GOUGE","GOURD","GRAFT","GRAIL","GRAIN","GRAND","GRANT","GRASP",
+      "GRASS","GRATE","GRAVE","GRAVY","GRAZE","GREAT","GREED","GREEN","GREET","GRIEF",
+      "GRILL","GRIME","GRIMY","GRIND","GRIPE","GROIN","GROOM","GROPE","GROSS","GROUP",
+      "GROUT","GROVE","GROWL","GROWN","GRUEL","GRUFF","GRUNT","GUARD","GUAVA","GUESS",
+      "GUEST","GUIDE","GUILD","GUILE","GUILT","GUISE","GULCH","GULLY","GUMBO","GUMMY",
+      "GUPPY","GUSTO","GUSTY","GYPSY","HABIT","HAIRY","HALVE","HANDY","HAPPY","HARDY",
+      "HAREM","HARPY","HARRY","HARSH","HATCH","HATER","HAUNT","HAVEN","HAVOC","HAZEL",
+      "HEAVY","HEDGE","HEFTY","HELIX","HELLO","HENCE","HERON","HILLY","HINGE","HIPPO",
+      "HIPPY","HITCH","HOARD","HOBBY","HOIST","HOLLY","HOMER","HORDE","HORNY","HORSE",
+      "HOTEL","HOTLY","HOUND","HOUSE","HOVEL","HOWDY","HUMAN","HUMID","HUMOR","HUMPH",
+      "HUMUS","HUNCH","HUNKY","HURRY","HUSKY","HUSSY","HUTCH","HYDRO","HYENA","HYMEN",
+      "HYPER","ICILY","ICING","IGLOO","ILIAC","IMBUE","IMPEL","INANE","INBOX","INCUR",
+      "INERT","INFER","INGOT","INLAY","INLET","IONIC","IRATE","ISLET","ISSUE","ITCHY",
+      "JAUNT","JAZZY","JERKY","JETTY","JIFFY","JOIST","JOUST","JUICE","JUICY","KAPPA",
+      "KHAKI","KINKY","KITTY","KNAVE","KNEAD","KNELL","KNELT","KNIFE","KNOCK","KNOLL",
+      "KNOWN","KOALA","KRILL","LABEL","LABOR","LADEN","LADLE","LANCE","LANKY","LAPEL",
+      "LAPSE","LARGE","LARVA","LASSO","LATHE","LAUGH","LAYER","LEACH","LEAFY","LEAKY",
+      "LEANT","LEAPY","LEARN","LEASE","LEASH","LEAST","LEAVE","LEDGE","LEECH","LEERY",
+      "LEFTY","LEGAL","LEGGY","LIEGE","LIFER","LIKEN","LIMIT","LIMBO","LIMBS","LINEN",
+      "LINER","LINGO","LIPID","LITHE","LIVER","LLAMA","LOAMY","LOATH","LOBBY","LOCAL",
+      "LOCUS","LODGE","LOFTY","LOGIC","LOGIN","LOOPY","LOOSE","LORRY","LOSER","LOUSE",
+      "LOUSY","LOVER","LOWER","LOWLY","LUCID","LUMEN","LUMPY","LUNAR","LUNCH","LUNGE",
+      "LUPUS","LURCH","LURID","LUSTY","LYING","LYMPH","LYRIC","MACAW","MACHO","MACRO",
+      "MADAM","MADLY","MAFIA","MAIZE","MAJOR","MAKER","MAMBO","MAMMA","MAMMY","MANGA",
+      "MANGE","MANGO","MANGY","MANIA","MANIC","MANLY","MANOR","MARRY","MARSH","MASON",
+      "MASSE","MATCH","MATEY","MATTE","MAUVE","MAVEN","MAXIM","MAYBE","MAYOR","MEALY",
+      "MEANT","MEATY","MECCA","MEDAL","MEDIC","MELEE","MELON","MERCY","METAL","METER",
+      "METRO","MICRO","MIDST","MIGHT","MILKY","MIMIC","MINCE","MINER","MINIM","MINOR",
+      "MINTY","MINUS","MIRTH","MISER","MISSY","MOCHA","MODAL","MODEL","MODEM","MOGUL",
+      "MOIST","MOLAR","MOLDY","MONEY","MONTH","MOODY","MOOSE","MORAL","MORON","MORPH",
+      "MOSSY","MOTIF","MOTTO","MOULD","MOULT","MOUNT","MOURN","MOUSE","MOUTH","MOVER",
+      "MOWER","MUCKY","MUCUS","MUFTI","MUGGY","MULCH","MUMMY","MUNCH","MURAL","MURKY",
+      "MUSHY","MUSKY","MUSTY","MYRRH","NADIR","NAIVE","NANNY","NASAL","NASTY","NATAL",
+      "NAVAL","NAVEL","NEEDY","NERDY","NERVE","NEVER","NEWER","NEWLY","NICER","NICHE",
+      "NIGHT","NINJA","NINNY","NINTH","OCEAN","OCTAL","OCTET","ODDER","ODDLY","OFFAL",
+      "OFFER","OFTEN","OLDEN","OLDER","OLIVE","OMBRE","OMEGA","ONION","ONSET","OPERA",
+      "OPIATE","OPINE","OPIUM","OPTIC","ORATE","ORBIT","ORDER","ORGAN","OUGHT","OUNCE",
+      "OUTDO","OUTGO","OUTRE","OUTRY","OVATE","OVERT","OVOID","OWING","OWNER","OXIDE",
+      "OZONE","PADDY","PAGAN","PANEL","PANIC","PANSY","PANTO","PANTY","PAPAL","PAPER",
+      "PARED","PARKA","PARRY","PARSE","PARTY","PASTA","PASTE","PASTY","PATCH","PATER",
+      "PATTY","PAUSE","PAYEE","PAYER","PEACE","PEARL","PECAN","PEDAL","PENNE","PEONY",
+      "PERIL","PERKY","PESTO","PETAL","PHASE","PHONE","PHOTO","PIANO","PICCO","PIETY",
+      "PIGGY","PILOT","PITCH","PITHY","PIVOT","PIXEL","PIXIE","PIZZA","PLACE","PLAID",
+      "PLAIN","PLAIT","PLANE","PLANK","PLANT","PLATE","PLAZA","PLEAD","PLEAT","PLIED",
+      "PLOD","PLOWS","PLOY","PLUG","PLUM","PLUMB","PLUME","PLUMP","PLUMS","PLUSH",
+      "POACH","POEMS","POINT","POISE","POKER","POKEY","POLAR","POLED","POLIC","POLKA",
+      "POLOS","POLYP","PONDS","PONER","PONTS","POOH","POOL","POOP","POOR","POPS","POSE",
+      "POSED","POSER","POSES","POSIT","POSSE","POSTS","POSY","POT","POTSY","POUCH",
+      "POUND","POUR","POUT","POUTS","POWER","PRANK","PRAY","PREEN","PRESS","PREYS",
+      "PRICE","PRICK","PRIDE","PRIED","PRIES","PRIG","PRIM","PRIME","PRIMO","PRIMP",
+      "PRINT","PRION","PRIOR","PRISE","PRISM","PRIVY","PRIZE","PROBE","PROD","PROFS",
+      "PROM","PRONE","PRONG","PROOF","PROPS","PROSE","PROUD","PROVE","PROWL","PROXY",
+      "PRUDE","PRUNE","PSALM","PSYCH","PUBIC","PUDGY","PUFFY","PULL","PULPY","PULSE",
+      "PUMAS","PUNCH","PUNKS","PUNNY","PUNTO","PUNTS","PUPPY","PURE","PURGE","PURRS",
+      "PUSH","PUSSY","PUTTY","PYGMY","QUACK","QUAIL","QUAIN","QUAKE","QUAKY","QUALM",
+      "QUARK","QUART","QUASH","QUAYS","QUEEN","QUEER","QUELL","QUERY","QUEST","QUEUE",
+      "QUICK","QUIDS","QUIET","QUIFF","QUILL","QUILT","QUIPS","QUIRE","QUIRK","QUIRT",
+      "QUITE","QUITS","QUOTA","QUOTE","QUOTH","RABBI","RABID","RACED","RACER","RACES",
+      "RACKS","RACON","RADAR","RADII","RADIO","RAFIA","RAFTS","RAGED","RAGES","RAILS",
+      "RAINS","RAINY","RAISE","RAJAH","RAKED","RAKES","RAKING","RALLY","RAMPS","RANCH",
+      "RANDS","RANGE","RANGY","RANKS","RANTS","RAPED","RAPES","RAPID","RARER","RASPS",
+      "RATIO","RATED","RATES","RATHE","RATHER","RATIFY","RATING","RATTY","RAVED","RAVEN",
+      "RAVER","RAVES","RAYED","RAZED","RAZOR","REACH","REACT","READS","READY","REALM",
+      "REAMS","REAPS","REARM","REARS","REBEL","REBUT","RECAP","RECON","RECUR","RECUT",
+      "REDDY","REDID","REDOS","REEDS","REEDY","REEFS","REFIT","REGAL","REIGN","REINS",
+      "RELAY","RELIC","REMIT","REND","RENEWS","RENIN","RENTS","REPAY","REPEL","REPLY",
+      "RERAN","RERUN","RESET","RESIN","REST","RETCH","RETRY","REUSE","REVEL","REVUE",
+      "RHEUM","RHINO","RHUMB","RIALS","RICED","RICER","RICES","RICHE","RICKS","RIDER",
+      "RIDES","RIDGE","RIFER","RIFLE","RIFT","RIGHT","RIGID","RIGOR","RILED","RILES",
+      "RILLS","RIMED","RIMES","RINDS","RINGS","RINKS","RINSE","RIPEN","RIPER","RIPES",
+      "RISEN","RISER","RISES","RISKS","RISKY","RITES","RITZY","RIVED","RIVEN","RIVER",
+      "RIVES","ROACH","ROADS","ROAMS","ROANS","ROARS","ROAST","ROBED","ROBES","ROBIN",
+      "ROBOT","ROCKS","ROCKY","RODEO","ROGER","ROGUE","ROILS","ROLES","ROLLS","ROMAN",
+      "ROOFS","ROOKS","ROOMS","ROOMY","ROOST","ROOTS","ROPED","ROPES","ROPEY","ROSES",
+      "ROTOR","ROUGE","ROUGH","ROUND","ROUSE","ROUTE","ROUTS","ROVED","ROVER","ROVES",
+      "ROWAN","ROWED","ROWER","ROYAL","RUBLE","RUDDY","RUDER","RUFFS","RUGBY","RUGGED",
+      "RULER","RULES","RUMBA","RUMOR","RUMPS","RUNES","RUNGS","RUNIC","RUNNY","RUNTS",
+      "RUNTY","RUPEE","RURAL","RUSES","RUSHY","RUSTS","RUSTY","RUTTY","SABER","SABLE",
+      "SABRE","SACKS","SACRA","SADLY","SAFER","SAFES","SAGAS","SAGES","SAGGY","SAINT",
+      "SAKES","SAKI","SALAD","SALES","SALLY","SALON","SALSA","SALTS","SALTY","SALVE",
+      "SALVO","SAMBA","SANDS","SANDY","SANED","SANER","SANES","SAPPY","SARAN","SARGE",
+      "SARIS","SASSY","SATAY","SATED","SATES","SATIN","SATYR","SAUCE","SAUCY","SAUNA",
+      "SAVED","SAVER","SAVES","SAVOR","SAVOY","SAWED","SAYER","SCABS","SCADS","SCALD",
+      "SCALE","SCALP","SCALY","SCAMP","SCANS","SCANT","SCARE","SCARF","SCARP","SCARS",
+      "SCARY","SCATS","SCENE","SCENT","SCION","SCOFF","SCOLD","SCONE","SCOOP","SCOOT",
+      "SCOPE","SCORE","SCORN","SCOUR","SCOUT","SCOWL","SCRAM","SCRAP","SCREE","SCREW",
+      "SCRIM","SCRIP","SCROD","SCRUB","SCRUM","SCUBA","SCUFF","SCULL","SEALS","SEAMS",
+      "SEAMY","SEARS","SEATS","SEDAN","SEDER","SEEKS","SEEMS","SEEPS","SEERS","SEINE",
+      "SEIZE","SELLS","SENSE","SEPAL","SEPIC","SEPTA","SERFS","SERGE","SERIF","SERUM",
+      "SERVE","SEVEN","SEVER","SEWED","SEWER","SEXED","SEXES","SHACK","SHADE","SHADY",
+      "SHAFT","SHAGS","SHAHS","SHAKE","SHAKO","SHAKY","SHALE","SHALL","SHALT","SHAMS",
+      "SHANK","SHAPE","SHARD","SHARE","SHARK","SHARP","SHAVE","SHAWL","SHEAF","SHEAR",
+      "SHEEN","SHEEP","SHEER","SHEET","SHEIK","SHELF","SHELL","SHIED","SHIES","SHIFT",
+      "SHILL","SHIMS","SHINE","SHINS","SHINY","SHIPS","SHIRE","SHIRK","SHIRR","SHIRT",
+      "SHISH","SHIVA","SHIVE","SHOAL","SHOCK","SHOED","SHOES","SHOGI","SHONE","SHOOK",
+      "SHOOS","SHOOT","SHOPS","SHORE","SHORN","SHORT","SHOTS","SHOUT","SHOVE","SHOWN",
+      "SHOWS","SHOWY","SHRED","SHREW","SHRUB","SHRUG","SHUCK","SHUNT","SHUSH","SHUTS",
+      "SHYLY","SIDED","SIDES","SIDLE","SIEGE","SIEVE","SIFTS","SIGHS","SIGHT","SIGMA",
+      "SIGNS","SILKS","SILKY","SILLS","SILLY","SILOS","SILTS","SILTY","SINCE","SINEWS",
+      "SINGE","SINGH","SINGS","SINKS","SINUS","SIRED","SIRES","SISAL","SISSY","SITAR",
+      "SITED","SITES","SIXES","SIXTH","SIXTY","SIZED","SIZES","SKATE","SKEET","SKEIN",
+      "SKIDS","SKIED","SKIER","SKIES","SKIFF","SKILL","SKIMP","SKIMS","SKINK","SKINS",
+      "SKIPS","SKIRT","SKITS","SKULK","SKULL","SKUNK","SLABS","SLACK","SLAGS","SLAIN",
+      "SLAKE","SLAMS","SLANG","SLANT","SLAPS","SLASH","SLATE","SLATS","SLAVE","SLAVS",
+      "SLAYS","SLEDS","SLEEK","SLEEP","SLEET","SLEPT","SLEWS","SLICE","SLICK","SLIDE",
+      "SLIME","SLIMS","SLIMY","SLING","SLINK","SLIPS","SLITS","SLOBS","SLOES","SLOGS",
+      "SLOOP","SLOPE","SLOPS","SLOSH","SLOTH","SLUNG","SLUNK","SLURP","SLURS","SLUSH",
+      "SLYER","SMACK","SMALL","SMART","SMASH","SMEAR","SMELL","SMELT","SMILE","SMIRK",
+      "SMITE","SMITH","SMOCK","SMOGS","SMOKE","SMOKY","SMOTE","SMUTS","SNACK","SNAGS",
+      "SNAIL","SNAKE","SNAKY","SNAPS","SNARE","SNARL","SNEAK","SNEER","SNICK","SNIDE",
+      "SNIFF","SNIPE","SNIPS","SNITS","SNOBS","SNOOD","SNOOK","SNOOP","SNOOT","SNORE",
+      "SNORT","SNOTS","SNOUT","SNOWS","SNOWY","SNUBS","SNUCK","SNUFF","SNUGS","SOAKS",
+      "SOAPS","SOAPY","SOARS","SOBER","SOCKS","SODAS","SOFAS","SOGGY","SOILS","SOLAR",
+      "SOLDS","SOLED","SOLES","SOLID","SOLOS","SOLVE","SONAR","SONGS","SONIC","SONNY",
+      "SOONS","SOOTY","SOPHS","SOPPY","SORE","SORES","SORRY","SORTS","SOULS","SOUND",
+      "SOUPS","SOUPY","SOURS","SOWED","SOWER","SPACE","SPADE","SPAKE","SPANK","SPANS",
+      "SPARE","SPARK","SPARS","SPASM","SPATE","SPATS","SPAWN","SPAYED","SPEAK","SPEAR",
+      "SPECK","SPECS","SPEED","SPELL","SPELT","SPEND","SPENT","SPERM","SPEWS","SPICE",
+      "SPICY","SPIED","SPIEL","SPIES","SPIFF","SPIKE","SPIKY","SPILL","SPILT","SPINE",
+      "SPINS","SPINY","SPIRE","SPITE","SPITS","SPITZ","SPLAT","SPLAY","SPLIT","SPOIL",
+      "SPOKE","SPOOF","SPOOK","SPOOL","SPOON","SPOOR","SPORE","SPORT","SPOTS","SPOUT",
+      "SPRAT","SPRAY","SPREE","SPRIG","SPRY","SPUDS","SPUME","SPUNK","SPURN","SPURS",
+      "SPURT","SQUAB","SQUAD","SQUAT","SQUAW","SQUIB","SQUID","STAB","STABS","STACK",
+      "STAFF","STAGE","STAGS","STAID","STAIN","STAIR","STAKE","STALE","STALK","STALL",
+      "STAMP","STAND","STANK","STAPH","STARE","STARK","STARS","START","STASH","STATE",
+      "STATS","STAVE","STAYS","STEAD","STEAK","STEAL","STEAM","STEED","STEEL","STEEP",
+      "STEER","STEIN","STEMS","STEPS","STERN","STEWS","STICK","STIES","STIFF","STILE",
+      "STILL","STILT","STING","STINK","STINT","STIRS","STOAT","STOCK","STOIC","STOKE",
+      "STOLE","STOMP","STONE","STONY","STOOD","STOOL","STOOP","STOPS","STORE","STORK",
+      "STORM","STORY","STOUT","STOVE","STOWS","STRAP","STRAW","STRAY","STREP","STREW",
+      "STRIP","STROP","STRUM","STRUT","STUBS","STUCK","STUDS","STUDY","STUFF","STUMP",
+      "STUNG","STUNK","STUNS","STUNT","STYLE","STYLI","STYMY","SUAVE","SUBAS","SUBBY",
+      "SUCHY","SUCKS","SUDAN","SUDSY","SUEDE","SUGAR","SULKS","SULKY","SULLY","SUMAC",
+      "SUMMA","SUNKEN","SUNNY","SUNUP","SUPER","SURER","SURGE","SURLY","SUSHI","SWABS",
+      "SWAGS","SWAIN","SWAMI","SWAMP","SWANK","SWANS","SWAPS","SWARD","SWARM","SWASH",
+      "SWATH","SWATS","SWAYS","SWEAR","SWEAT","SWEEP","SWEET","SWELL","SWEPT","SWIFT",
+      "SWIGS","SWILL","SWIMS","SWINE","SWING","SWIPE","SWIRL","SWISH","SWISS","SWOON",
+      "SWOOP","SWORD","SWORE","SWORN","SWUNG","SYNOD","SYRUP","TABBY","TABLE","TABOO",
+      "TACIT","TACKS","TACKY","TACO","TACOS","TACT","TAILS","TAKEN","TAKER","TAKES",
+      "TALCS","TALES","TALKS","TALKY","TALLY","TALON","TAMED","TAMER","TAMES","TAMPS",
+      "TANGO","TANGS","TANGY","TANKS","TAPED","TAPER","TAPES","TAPIR","TARDY","TARED",
+      "TARES","TARGE","TARNS","TAROT","TARPS","TARRY","TARTS","TASKS","TASTE","TASTY",
+      "TATER","TATTOO","TAUNT","TAUTS","TAWNY","TAXED","TAXES","TAXIS","TEACH","TEALS",
+      "TEAMS","TEARS","TEARY","TEASE","TEATS","TECHS","TEDDY","TEEMS","TEENS","TEENY",
+      "TEETH","TELEX","TELIC","TELLS","TEMPI","TEMPO","TEMPT","TENDS","TENET","TENOR",
+      "TENSE","TENTH","TENTS","TEPEE","TEPID","TERMS","TERNS","TERSE","TESTS","TESTY",
+      "TETHER","TEXTS","THANE","THANK","THAWS","THEFT","THEIR","THEME","THERE","THERM",
+      "THESE","THETA","THICK","THIEF","THIGH","THINE","THING","THINK","THINS","THIRD",
+      "THONG","THORN","THOSE","THREE","THREW","THROB","THROW","THRUM","THUDS","THUGS",
+      "THUMB","THUMP","THYME","TIARA","TIBIA","TICKS","TIDAL","TIDED","TIDES","TIERS",
+      "TIFFS","TIGER","TIGHT","TILDE","TILED","TILER","TILES","TILLS","TILTS","TIMED",
+      "TIMER","TIMES","TIMID","TIPS","TIPSY","TITAN","TITHE","TITLE","TIZZY","TOADS",
+      "TOADY","TOAST","TODAY","TODDY","TOFFY","TOFU","TOGAS","TOILE","TOILS","TOKED",
+      "TOKEN","TOKES","TOLLS","TOMBS","TONES","TONGS","TONIC","TOOLS","TOOTH","TOOTS",
+      "TOPAZ","TOPIC","TORCH","TORES","TORSO","TORTS","TORUS","TOTAL","TOTED","TOTEM",
+      "TOTES","TOUCH","TOUGH","TOURS","TOUTS","TOWED","TOWEL","TOWER","TOWN","TOXIC",
+      "TOXIN","TOYED","TRACE","TRACK","TRACT","TRADE","TRAIL","TRAIN","TRAIT","TRAMP",
+      "TRAMS","TRAPS","TRASH","TRAYS","TREAD","TREAT","TREED","TREES","TREKS","TREND",
+      "TRESS","TREYS","TRIAD","TRIAL","TRIBE","TRICE","TRICK","TRIED","TRIER","TRIES",
+      "TRIKE","TRILL","TRIMS","TRIOS","TRIPE","TRIPS","TRITE","TROLL","TROOP","TROPE",
+      "TROTH","TROTS","TROUT","TROVE","TRUCE","TRUCK","TRUES","TRULY","TRUMP","TRUNK",
+      "TRUSS","TRUST","TRUTH","TRYST","TUBAS","TUBBY","TUBED","TUBER","TUBES","TUCKS",
+      "TUFTS","TUFTY","TULIP","TULLE","TUMID","TUMMY","TUMOR","TUNED","TUNER","TUNES",
+      "TUNIC","TURBO","TURFS","TURFY","TURNS","TUSKS","TUTEE","TUTOR","TUTUS","TWAIN",
+      "TWANG","TWEAK","TWEED","TWEET","TWERP","TWICE","TWIGS","TWILL","TWIN","TWINE",
+      "TWINS","TWIRL","TWIST","TWITS","TYING","TYKES","TYPED","TYPES","TYPIC","TYPOS",
+      "TYRED","TYRES","TZARS","UDDER","ULCER","ULTRA","UMBRA","UNCLE","UNDER","UNDID",
+      "UNDUE","UNFED","UNFIT","UNFIX","UNHIP","UNICORNS","UNION","UNITE","UNITS","UNITY",
+      "UNLIT","UNMAN","UNPACK","UNSET","UNTIE","UNWED","UNZIP","UPEND","UPHILL","UPHOLD",
+      "UPKEEP","UPLAND","UPLINK","UPLOAD","UPMOST","UPPED","UPPER","UPSET","URBAN","URGED",
+      "URGER","URGES","URINE","USABLE","USAGES","USERS","USHER","USING","USUAL","USURP",
+      "USURY","UTERI","UTILE","UTTER","UVULA","VAGUE","VAINS","VAIRS","VALES","VALET",
+      "VALID","VALOR","VALUE","VALVE","VAMPS","VANES","VAPID","VAPOR","VARIA","VARY",
+      "VASES","VAULT","VAUNT","VEALS","VEEPS","VEERS","VEILS","VEINS","VELDS","VELDT",
+      "VENAL","VENGE","VENOM","VENTS","VENUE","VERBS","VERGE","VERSE","VERSO","VERVE",
+      "VESTS","VEXED","VEXES","VIALS","VIAND","VIBES","VICAR","VICED","VICES","VIDEO",
+      "VIEWS","VIGIL","VIGOR","VILER","VILLA","VINES","VINYL","VIOLA","VIOLS","VIPER",
+      "VIRAL","VIRUS","VISAS","VISCS","VISIT","VISOR","VISTA","VITAL","VITAM","VIVER",
+      "VIVID","VIXEN","VIZIR","VOCAL","VODKA","VOGUE","VOICE","VOIDS","VOILE","VOLES",
+      "VOLTS","VOMIT","VOTED","VOTER","VOTES","VOUCH","VOWED","VOWEL","VOWER","VROOM",
+      "VYING","WACKO","WACKY","WADDY","WADED","WADER","WADES","WADIS","WAFER","WAFTS",
+      "WAGED","WAGER","WAGES","WAGON","WAIFS","WAILS","WAIST","WAITS","WAIVE","WAKED",
+      "WAKEN","WAKES","WALKS","WALLS","WALTZ","WANDS","WANED","WANES","WANGS","WANTS",
+      "WARDS","WARES","WARMS","WARNS","WARPS","WARTS","WARTY","WASHY","WASPS","WASTE",
+      "WATCH","WATER","WATTS","WAVED","WAVER","WAVES","WAVEY","WAXED","WAXEN","WAXES",
+      "WEARS","WEARY","WEAVE","WEDGE","WEDGY","WEEDS","WEEDY","WEEKS","WEEPS","WEEPY",
+      "WEFTS","WEIGH","WEIRD","WELDS","WELLS","WELTS","WENCH","WENDS","WESTS","WETLY",
+      "WHACK","WHALE","WHAMS","WHANG","WHARF","WHEAT","WHEEL","WHELK","WHELM","WHENS",
+      "WHERE","WHETS","WHICH","WHIFF","WHILE","WHIMS","WHINE","WHINY","WHIPS","WHIRL",
+      "WHIRR","WHIRS","WHISK","WHIST","WHITE","WHITS","WHIZZ","WHOLE","WHOMP","WHOMS",
+      "WHORE","WHORL","WHOSE","WICKS","WIDED","WIDER","WIDES","WIDOW","WIDTH","WIELD",
+      "WIGHT","WIKIS","WILDS","WILES","WILLS","WILLY","WILTS","WIMPS","WIMPY","WINCE",
+      "WINCH","WINDS","WINDY","WINED","WINES","WINGS","WINKS","WINOS","WIPED","WIPER",
+      "WIPES","WIRED","WIREY","WIRES","WISER","WISES","WISHY","WISPS","WISPY","WITCH",
+      "WITHE","WITTY","WIVES","WOKEN","WOLFS","WOMAN","WOMBS","WOMEN","WOODY","WOOED",
+      "WOOER","WOOFS","WOOED","WORST","WORTH","WOULDS","WOUND","WOVEN","WRACK","WRAPS",
+      "WRATH","WREAK","WRECK","WRENS","WREST","WRIST","WRITE","WRITS","WROTE","WROTH",
+      "WRUNG","WRYLY","WUSSY","XENON","YACHT","YANKS","YARDS","YARNS","YAWLS","YAWNS",
+      "YEARS","YEAST","YELLS","YELPS","YESES","YIELD","YIPES","YODEL","YOGAS","YOGIC",
+      "YOGIS","YOKED","YOKEL","YOKES","YOLKS","YOLKY","YORE","YOUNG","YOUR","YOURS",
+      "YOUTH","YOWLS","YOYOS","YUCCA","YUCKS","YUHAN","YUMMY","YUPPY","ZAIRE","ZAPPY",
+      "ZEALS","ZEBRA","ZEROS","ZESTY","ZILCH","ZILLS","ZINCS","ZINGS","ZINGY","ZIPPY",
+      "ZONAL","ZONED","ZONES","ZOOMS","ZOOTY"
+    ];
+
+    // 合并并去重形成有效词集合
+    const VALID_SET = new Set([...ANSWERS, ...EXTRA_VALID]);
+
+    // ==================== 游戏状态 ====================
+    const MAX_ROWS = 6;
+    const WORD_LEN = 5;
+
+    const State = {
+      answer: '',
+      guesses: [],         // 已提交的猜测
+      current: '',         // 当前输入
+      row: 0,
+      status: 'playing',   // playing | won | lost
+      keyStates: {},       // 键盘字母状态
+      animating: false,
+      stats: {
+        played: 0,
+        wins: 0,
+        currentStreak: 0,
+        maxStreak: 0,
+        distribution: [0, 0, 0, 0, 0, 0]
+      }
+    };
+
+    // ==================== DOM 引用 ====================
+    const boardEl = document.getElementById('board');
+    const keyboardEl = document.getElementById('keyboard');
+    const toastEl = document.getElementById('toast');
+    const modalEl = document.getElementById('modal');
+    const modalContent = document.getElementById('modalContent');
+
+    // ==================== 存储 ====================
+    const Storage = {
+      KEY: 'wordle_clone_v1',
+      load() {
+        try {
+          const s = JSON.parse(localStorage.getItem(this.KEY));
+          if (s) {
+            State.stats = { ...State.stats, ...s.stats };
+            if (s.dark) document.body.classList.add('dark');
+          }
+        } catch (e) {}
+      },
+      save() {
+        try {
+          localStorage.setItem(this.KEY, JSON.stringify({
+            stats: State.stats,
+            dark: document.body.classList.contains('dark')
+          }));
+        } catch (e) {}
+      }
+    };
+
+    // ==================== 初始化 ====================
+    function init() {
+      Storage.load();
+      buildBoard();
+      buildKeyboard();
+      bindEvents();
+      newGame();
+      updateThemeBtn();
+    }
+
+    function buildBoard() {
+      boardEl.innerHTML = '';
+      for (let r = 0; r < MAX_ROWS; r++) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.dataset.row = r;
+        for (let c = 0; c < WORD_LEN; c++) {
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+          tile.dataset.row = r;
+          tile.dataset.col = c;
+          row.appendChild(tile);
+        }
+        boardEl.appendChild(row);
+      }
+    }
+
+    function buildKeyboard() {
+      const layout = [
+        ['q','w','e','r','t','y','u','i','o','p'],
+        ['a','s','d','f','g','h','j','k','l'],
+        ['enter','z','x','c','v','b','n','m','back']
+      ];
+      keyboardEl.innerHTML = '';
+      layout.forEach(rowKeys => {
+        const row = document.createElement('div');
+        row.className = 'keyboard-row';
+        rowKeys.forEach(k => {
+          const btn = document.createElement('button');
+          btn.className = 'key' + ((k === 'enter' || k === 'back') ? ' wide' : '');
+          btn.dataset.key = k;
+          btn.textContent = k === 'back' ? '⌫' : k.toUpperCase();
+          btn.addEventListener('click', () => handleKey(k));
+          row.appendChild(btn);
+        });
+        keyboardEl.appendChild(row);
+      });
+    }
+
+    function bindEvents() {
+      document.addEventListener('keydown', (e) => {
+        if (modalEl.classList.contains('show') && e.key === 'Enter') {
+          closeModal();
+          return;
+        }
+        if (modalEl.classList.contains('show')) return;
+        if (State.animating) return;
+        const key = e.key.toLowerCase();
+        if (key === 'enter') handleKey('enter');
+        else if (key === 'backspace') handleKey('back');
+        else if (/^[a-z]$/.test(key)) handleKey(key);
+      });
+
+      document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+      document.getElementById('statsBtn').addEventListener('click', () => showStats());
+      document.getElementById('helpBtn').addEventListener('click', () => showHelp());
+
+      modalEl.addEventListener('click', (e) => {
+        if (e.target === modalEl) closeModal();
+      });
+    }
+
+    // ==================== 新游戏 ====================
+    function newGame() {
+      State.answer = ANSWERS[Math.floor(Math.random() * ANSWERS.length)];
+      State.guesses = [];
+      State.current = '';
+      State.row = 0;
+      State.status = 'playing';
+      State.keyStates = {};
+      State.animating = false;
+      buildBoard();
+      // 重置键盘颜色
+      document.querySelectorAll('.key').forEach(k => {
+        k.classList.remove('correct', 'present', 'absent');
+      });
+      closeModal();
+    }
+
+    // ==================== 输入处理 ====================
+    function handleKey(k) {
+      if (State.status !== 'playing' || State.animating) return;
+      if (k === 'enter') {
+        submitGuess();
+      } else if (k === 'back') {
+        if (State.current.length > 0) {
+          State.current = State.current.slice(0, -1);
+          updateRow();
+        }
+      } else if (/^[a-z]$/.test(k)) {
+        if (State.current.length < WORD_LEN) {
+          State.current += k;
+          updateRow();
+        }
+      }
+    }
+
+    function updateRow() {
+      const row = boardEl.children[State.row];
+      if (!row) return;
+      const tiles = row.children;
+      for (let i = 0; i < WORD_LEN; i++) {
+        const ch = State.current[i] || '';
+        tiles[i].textContent = ch.toUpperCase();
+        tiles[i].classList.toggle('filled', !!ch);
+      }
+    }
+
+    // ==================== 提交猜测 ====================
+    function submitGuess() {
+      if (State.current.length !== WORD_LEN) {
+        showToast('Not enough letters');
+        shakeRow();
+        return;
+      }
+      const guess = State.current.toLowerCase();
+      const upper = State.current.toUpperCase();
+      if (!VALID_SET.has(upper)) {
+        showToast('Not in word list');
+        shakeRow();
+        return;
+      }
+
+      const result = evaluateGuess(upper, State.answer);
+      State.animating = true;
+      const row = boardEl.children[State.row];
+      const tiles = row.children;
+
+      // 逐个翻转
+      for (let i = 0; i < WORD_LEN; i++) {
+        setTimeout(() => {
+          tiles[i].classList.add('flip');
+          setTimeout(() => {
+            tiles[i].classList.remove('filled');
+            tiles[i].classList.add(result[i]);
+          }, 300);
+        }, i * 250);
+      }
+
+      // 翻转完成后更新键盘与状态
+      setTimeout(() => {
+        // 更新键盘颜色（优先级 correct > present > absent）
+        for (let i = 0; i < WORD_LEN; i++) {
+          const ch = upper[i];
+          const st = result[i];
+          const cur = State.keyStates[ch];
+          if (st === 'correct') State.keyStates[ch] = 'correct';
+          else if (st === 'present' && cur !== 'correct') State.keyStates[ch] = 'present';
+          else if (st === 'absent' && !cur) State.keyStates[ch] = 'absent';
+        }
+        applyKeyStates();
+
+        State.guesses.push({ word: upper, result });
+        State.row++;
+        State.current = '';
+
+        const won = upper === State.answer;
+        if (won) {
+          State.status = 'won';
+          // 弹跳动画
+          for (let i = 0; i < WORD_LEN; i++) {
+            setTimeout(() => tiles[i].classList.add('win'), i * 100);
+          }
+          State.stats.played++;
+          State.stats.wins++;
+          State.stats.currentStreak++;
+          State.stats.maxStreak = Math.max(State.stats.maxStreak, State.stats.currentStreak);
+          State.stats.distribution[State.row - 1]++;
+          Storage.save();
+          setTimeout(() => showResult(true), 1500);
+        } else if (State.row >= MAX_ROWS) {
+          State.status = 'lost';
+          State.stats.played++;
+          State.stats.currentStreak = 0;
+          Storage.save();
+          setTimeout(() => showResult(false), 600);
+        }
+        State.animating = false;
+      }, WORD_LEN * 250 + 350);
+    }
+
+    // 评估猜测
+    function evaluateGuess(guess, answer) {
+      const result = new Array(WORD_LEN).fill('absent');
+      const answerArr = answer.split('');
+      const guessArr = guess.split('');
+      // 先标 correct
+      for (let i = 0; i < WORD_LEN; i++) {
+        if (guessArr[i] === answerArr[i]) {
+          result[i] = 'correct';
+          answerArr[i] = null;
+        }
+      }
+      // 再标 present
+      for (let i = 0; i < WORD_LEN; i++) {
+        if (result[i] === 'correct') continue;
+        const idx = answerArr.indexOf(guessArr[i]);
+        if (idx !== -1) {
+          result[i] = 'present';
+          answerArr[idx] = null;
+        }
+      }
+      return result;
+    }
+
+    function applyKeyStates() {
+      document.querySelectorAll('.key').forEach(k => {
+        const ch = k.dataset.key;
+        k.classList.remove('correct', 'present', 'absent');
+        if (State.keyStates[ch]) {
+          k.classList.add(State.keyStates[ch]);
+        }
+      });
+    }
+
+    function shakeRow() {
+      const row = boardEl.children[State.row];
+      if (!row) return;
+      row.classList.add('shake');
+      setTimeout(() => row.classList.remove('shake'), 400);
+    }
+
+    // ==================== Toast ====================
+    let toastTimer = null;
+    function showToast(text, duration = 1500) {
+      toastEl.textContent = text;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), duration);
+    }
+
+    // ==================== 模态框 ====================
+    function closeModal() {
+      modalEl.classList.remove('show');
+    }
+
+    function showResult(won) {
+      const winPct = State.stats.played ? Math.round(State.stats.wins / State.stats.played * 100) : 0;
+      const title = won ? '🎉 漂亮！' : '😵 失败了';
+      const sub = won
+        ? `你用 ${State.row} 次猜中了答案`
+        : `别灰心，再来一局！`;
+      const maxDist = Math.max(1, ...State.stats.distribution);
+      const distHtml = State.stats.distribution.map((n, i) => {
+        const w = Math.round(n / maxDist * 100);
+        const hi = (won && i === State.row - 1) ? ' highlight' : '';
+        return `<div class="dist-row">
+          <div class="dist-num">${i + 1}</div>
+          <div class="dist-bar${hi}" style="width: ${Math.max(20, w)}%">${n}</div>
+        </div>`;
+      }).join('');
+
+      modalContent.innerHTML = `
+        <div class="modal-title">${title}</div>
+        <div class="modal-subtitle">${sub}</div>
+        <div class="modal-word">${State.answer}</div>
+        <div class="dist-title">猜中次数分布</div>
+        ${distHtml}
+        <div class="stats" style="margin-top:16px">
+          <div class="stat-item"><div class="stat-num">${State.stats.played}</div><div class="stat-label">已玩</div></div>
+          <div class="stat-item"><div class="stat-num">${winPct}</div><div class="stat-label">胜率%</div></div>
+          <div class="stat-item"><div class="stat-num">${State.stats.currentStreak}</div><div class="stat-label">当前连胜</div></div>
+          <div class="stat-item"><div class="stat-num">${State.stats.maxStreak}</div><div class="stat-label">最长连胜</div></div>
+        </div>
+        <div class="modal-buttons">
+          <button class="modal-btn secondary" id="closeModalBtn">关闭</button>
+          <button class="modal-btn primary" id="newGameBtn">新游戏</button>
+        </div>
+      `;
+      modalEl.classList.add('show');
+      document.getElementById('newGameBtn').addEventListener('click', newGame);
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+    }
+
+    function showStats() {
+      const winPct = State.stats.played ? Math.round(State.stats.wins / State.stats.played * 100) : 0;
+      const maxDist = Math.max(1, ...State.stats.distribution);
+      const distHtml = State.stats.distribution.map((n, i) => {
+        const w = Math.round(n / maxDist * 100);
+        return `<div class="dist-row">
+          <div class="dist-num">${i + 1}</div>
+          <div class="dist-bar" style="width: ${Math.max(20, w)}%">${n}</div>
+        </div>`;
+      }).join('');
+
+      modalContent.innerHTML = `
+        <div class="modal-title">📊 统计</div>
+        <div class="stats" style="margin:20px 0">
+          <div class="stat-item"><div class="stat-num">${State.stats.played}</div><div class="stat-label">已玩</div></div>
+          <div class="stat-item"><div class="stat-num">${winPct}</div><div class="stat-label">胜率%</div></div>
+          <div class="stat-item"><div class="stat-num">${State.stats.currentStreak}</div><div class="stat-label">当前连胜</div></div>
+          <div class="stat-item"><div class="stat-num">${State.stats.maxStreak}</div><div class="stat-label">最长连胜</div></div>
+        </div>
+        <div class="dist-title">猜中次数分布</div>
+        ${distHtml}
+        <div class="modal-buttons">
+          <button class="modal-btn primary" id="closeStatsBtn">关闭</button>
+        </div>
+      `;
+      modalEl.classList.add('show');
+      document.getElementById('closeStatsBtn').addEventListener('click', closeModal);
+    }
+
+    function showHelp() {
+      modalContent.innerHTML = `
+        <div class="modal-title">如何游戏</div>
+        <div class="modal-subtitle" style="margin-bottom:16px">猜出隐藏的 5 字母单词，共 6 次机会</div>
+        <div class="help-list">
+          <div class="help-item">
+            <div class="help-tiles">
+              <div class="help-tile correct">W</div>
+              <div class="help-tile">O</div>
+              <div class="help-tile">R</div>
+              <div class="help-tile">D</div>
+              <div class="help-tile">S</div>
+            </div>
+            <div class="help-text"><b>W</b> 在答案中且位置正确</div>
+          </div>
+          <div class="help-item">
+            <div class="help-tiles">
+              <div class="help-tile">P</div>
+              <div class="help-tile present">I</div>
+              <div class="help-tile">L</div>
+              <div class="help-tile">L</div>
+              <div class="help-tile">S</div>
+            </div>
+            <div class="help-text"><b>I</b> 在答案中但位置不对</div>
+          </div>
+          <div class="help-item">
+            <div class="help-tiles">
+              <div class="help-tile">V</div>
+              <div class="help-tile">A</div>
+              <div class="help-tile">G</div>
+              <div class="help-tile absent">U</div>
+              <div class="help-tile">E</div>
+            </div>
+            <div class="help-text"><b>U</b> 不在答案中</div>
+          </div>
+        </div>
+        <div style="font-size:12px;text-align:left;margin-bottom:16px;opacity:0.8;line-height:1.5">
+          每次猜测必须是有效的 5 字母单词。按回车提交。<br>
+          颜色提示将帮助你一步步逼近答案。
+        </div>
+        <button class="help-close" id="closeHelpBtn">明白了</button>
+      `;
+      modalEl.classList.add('show');
+      document.getElementById('closeHelpBtn').addEventListener('click', closeModal);
+    }
+
+    // ==================== 主题切换 ====================
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+      Storage.save();
+      updateThemeBtn();
+    }
+
+    function updateThemeBtn() {
+      const btn = document.getElementById('themeBtn');
+      btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    }
+
+    // ==================== 启动 ====================
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
