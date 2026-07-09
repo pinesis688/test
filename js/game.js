@@ -156,6 +156,7 @@ function gameElapsed() {
 
 function countCandidates() {
   const greens = {}, yellows = {}, grays = new Set();
+  const yellowSet = new Set();
   for (let r = 0; r < State.curRow; r++) {
     const row = State.rows[r];
     for (let c = 0; c < State.len; c++) {
@@ -166,15 +167,22 @@ function countCandidates() {
       } else if (t.classList.contains('present')) {
         if (!yellows[letter]) yellows[letter] = 0;
         yellows[letter]++;
-      } else if (t.classList.contains('absent')) {
+        yellowSet.add(letter);
+      }
+    }
+  }
+  for (let r = 0; r < State.curRow; r++) {
+    const row = State.rows[r];
+    for (let c = 0; c < State.len; c++) {
+      const t = row[c];
+      const letter = t.textContent;
+      if (t.classList.contains('absent') && !yellowSet.has(letter) && !Object.values(greens).includes(letter)) {
         grays.add(letter);
       }
     }
   }
   for (const c in State.hintLocked) greens[+c] = State.answer[+c];
-  State.excludedLetters.forEach(l => grays.add(l));
-  for (const c in greens) grays.delete(greens[c]);
-  for (const l in yellows) grays.delete(l);
+  State.excludedLetters.forEach(l => { if (!yellowSet.has(l) && !Object.values(greens).includes(l)) grays.add(l); });
   let count = 0;
   State.wordPool.forEach(w => {
     let ok = true;
@@ -207,6 +215,7 @@ function newGame() {
   State.curCol = 0;
   State.gameOver = false;
   State.won = false;
+  State.evaluating = false;
   State.keyState = {};
   State.hintLocked = {};
   State.hintsUsed = 0;
@@ -224,7 +233,7 @@ function newGame() {
 }
 
 function handleKey(key) {
-  if (State.gameOver) return;
+  if (State.evaluating || State.gameOver) return;
   if (key === 'ENTER') return submitGuess();
   if (key === 'BACKSPACE') return deleteLetter();
   if (/^[A-Z]$/.test(key)) {
@@ -252,7 +261,8 @@ function deleteLetter() {
 }
 
 function useHint() {
-  if (State.hintsLeft <= 0 || State.gameOver) return toast('没有可用提示');
+  if (State.evaluating || State.gameOver) return;
+  if (State.hintsLeft <= 0) return toast('没有可用提示');
   const avail = [];
   for (let c = 0; c < State.len; c++) { if (!State.hintLocked[c]) avail.push(c); }
   if (avail.length === 0) return toast('所有位置已锁定');
@@ -274,7 +284,7 @@ function useHint() {
 
 function useExclude() {
   if (State.excludeCount <= 0) return toast('未启用排除');
-  if (State.excludeUsed || State.gameOver) return toast('已使用排除');
+  if (State.evaluating || State.excludeUsed || State.gameOver) return toast('已使用排除');
   const n = State.excludeCount;
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   const used = new Set();
@@ -287,14 +297,15 @@ function useExclude() {
       }
     }
   }
-  const notInAnswer = alphabet.filter(l =>
-    !State.answer.includes(l) && !used.has(l) && State.keyState[l] !== 'correct' && State.keyState[l] !== 'present'
+  // 随机排除未使用字母,不预知是否在答案中:排除有风险,可能误排到答案字母
+  const candidates = alphabet.filter(l =>
+    !used.has(l) && State.keyState[l] !== 'correct' && State.keyState[l] !== 'present' && State.keyState[l] !== 'excluded'
   );
-  for (let i = notInAnswer.length - 1; i > 0; i--) {
+  for (let i = candidates.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [notInAnswer[i], notInAnswer[j]] = [notInAnswer[j], notInAnswer[i]];
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
-  const excluded = notInAnswer.slice(0, Math.min(n, notInAnswer.length));
+  const excluded = candidates.slice(0, Math.min(n, candidates.length));
   excluded.forEach(l => {
     State.keyState[l] = 'excluded';
     State.excludedLetters.add(l);
@@ -306,7 +317,7 @@ function useExclude() {
 }
 
 function surrender() {
-  if (State.gameOver) return;
+  if (State.evaluating || State.gameOver) return;
   State.gameOver = true;
   State.won = false;
   stopTimer();
@@ -314,6 +325,7 @@ function surrender() {
 }
 
 function submitGuess() {
+  if (State.evaluating || State.gameOver) return;
   if (State.curCol < State.len) { shakeRow(); toast('字母不足'); return; }
   let guess = '';
   for (let c = 0; c < State.len; c++) guess += State.rows[State.curRow][c].textContent;
@@ -322,6 +334,7 @@ function submitGuess() {
 }
 
 function evaluateGuess(guess) {
+  State.evaluating = true;
   const result = new Array(State.len).fill('absent');
   const ans = State.answer.split('');
   const g = guess.split('');
@@ -332,7 +345,7 @@ function evaluateGuess(guess) {
     if (g[i] && ans.includes(g[i])) { result[i] = 'present'; ans[ans.indexOf(g[i])] = null; }
   }
   const tiles = State.rows[State.curRow];
-  let won = true;
+  const won = result.every(r => r === 'correct');
   tiles.forEach((t, i) => {
     setTimeout(() => {
       t.classList.add('flip');
@@ -346,11 +359,11 @@ function evaluateGuess(guess) {
         }
       }, 300);
     }, i * 200);
-    if (result[i] !== 'correct') won = false;
   });
   const finishedRow = State.curRow;
   const delay = State.len * 200 + 400;
   setTimeout(() => {
+    State.evaluating = false;
     if (won) {
       State.gameOver = true;
       State.won = true;

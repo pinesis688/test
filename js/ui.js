@@ -1,5 +1,14 @@
 'use strict';
 
+let allWordsCache = null;
+function getAllWords() {
+  if (allWordsCache) return allWordsCache;
+  const all = [];
+  for (const d in VOCAB) for (const l in VOCAB[d]) all.push(...VOCAB[d][l]);
+  allWordsCache = [...new Set(all)].sort();
+  return allWordsCache;
+}
+
 function buildDiffTabs() {
   const tabs = document.getElementById('diffTabs');
   tabs.innerHTML = '';
@@ -77,8 +86,11 @@ function onSpSelect(id, item) {
     State.diff = item.id;
     const d = DIFFICULTIES.find(x => x.id === State.diff);
     document.getElementById('spDiffHint').textContent = d.name + ' \u00b7 ' + getWordPool(State.diff, State.len).length + '\u8bcd';
-  } else if (id === 'spLenOpts') State.len = item;
-  else if (id === 'spAttemptOpts') State.attempts = item;
+  } else if (id === 'spLenOpts') {
+    State.len = item;
+    const d = DIFFICULTIES.find(x => x.id === State.diff);
+    document.getElementById('spDiffHint').textContent = d.name + ' \u00b7 ' + getWordPool(State.diff, State.len).length + '\u8bcd';
+  } else if (id === 'spAttemptOpts') State.attempts = item;
   else if (id === 'spHintOpts') State.hints = item;
   else if (id === 'spExcludeOpts') State.excludeCount = item;
   else if (id === 'spTimedOpts') State.timed = item;
@@ -90,7 +102,7 @@ function updateGameInfo() {
   let html = '<span>\u96be\u5ea6<b>' + d.name + '</b></span><span>\u957f\u5ea6<b>' + State.len + '</b></span><span>\u63d0\u793a<b>' + State.hintsLeft + '</b></span><span>\u5019\u9009<b>' + cand + '</b></span>';
   if (State.timed > 0 && State.startTime > 0) {
     const warn = State.timeLeft <= 10 ? ' warn' : '';
-    html += '<span class="timer' + warn + '">\u23f1 ' + fmtTime(State.timeLeft) + '</span>';
+    html += '<span class="timer' + warn + '">' + fmtTime(State.timeLeft) + '</span>';
   }
   document.getElementById('gameInfo').innerHTML = html;
   const hb = document.getElementById('hintBtn');
@@ -121,16 +133,28 @@ function recordResult(won, guesses) {
   setTimeout(() => showResult(won), 300);
 }
 
-function buildResultModal(won) {
-  const s = State.stats[statKey()] || { played: 0, won: 0, streak: 0, maxStreak: 0, dist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
-  const winRate = s.played ? Math.round(s.won / s.played * 100) : 0;
+function emptyStat() { return { played: 0, won: 0, streak: 0, maxStreak: 0, dist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }; }
+
+function buildDistHtml(s, maxRows, lastWin) {
   const maxD = Math.max(1, ...s.dist);
-  const lastWin = State.rows.findIndex(r => r && r.every(t => t.classList.contains('correct')));
-  let distHtml = '';
-  for (let i = 0; i < State.attempts; i++) {
+  let html = '';
+  for (let i = 0; i < maxRows; i++) {
     const cnt = s.dist[i] || 0;
-    distHtml += '<div class="dr"><div class="dn">' + (i + 1) + '</div><div class="db' + (i === lastWin ? ' hl' : '') + '" style="width:' + Math.max(8, cnt / maxD * 100) + '%">' + cnt + '</div></div>';
+    const hl = i === lastWin ? ' hl' : '';
+    html += '<div class="dr"><div class="dn">' + (i + 1) + '</div><div class="db' + hl + '" style="width:' + Math.max(8, cnt / maxD * 100) + '%">' + cnt + '</div></div>';
   }
+  return html;
+}
+
+function buildStatsHtml(s) {
+  const winRate = s.played ? Math.round(s.won / s.played * 100) : 0;
+  return '<div class="stats"><div class="si"><div class="sn">' + s.played + '</div><div class="sl">\u603b\u573a\u6b21</div></div><div class="si"><div class="sn">' + winRate + '%</div><div class="sl">\u80dc\u7387</div></div><div class="si"><div class="sn">' + s.streak + '</div><div class="sl">\u8fde\u80dc</div></div><div class="si"><div class="sn">' + s.maxStreak + '</div><div class="sl">\u6700\u957f\u8fde\u80dc</div></div></div>';
+}
+
+function buildResultModal(won) {
+  const s = State.stats[statKey()] || emptyStat();
+  const lastWin = State.won ? State.curRow : -1;
+  const distHtml = buildDistHtml(s, State.attempts, lastWin);
   const dict = typeof DICT !== 'undefined' ? DICT[State.answer] : null;
   const meaning = typeof MEAN !== 'undefined' ? (MEAN[State.answer] || '') : '';
   const elapsed = Math.floor(gameElapsed() / 1000);
@@ -138,13 +162,14 @@ function buildResultModal(won) {
   let dictHtml = '';
   if (dict) dictHtml = '<div class="mphon">' + dict.p + '</div><div class="mpos">' + dict.s + '</div><div class="mex">' + dict.e + '</div>';
   const timedLabel = State.timed > 0 ? ' \u00b7 \u9650\u65f6' + State.timed + 's' : '';
+  const sub = (won ? '\u7b2c' + (lastWin + 1) + '\u6b21\u731c\u4e2d' : '\u672a\u80fd\u731c\u51fa\u7b54\u6848') + (State.startTime > 0 ? ' \u00b7 \u7528\u65f6 ' + fmtTime(elapsed) : '');
   document.getElementById('modalContent').innerHTML =
     '<div class="mt">' + (won ? '\u606d\u559c!' : '\u6e38\u620f\u7ed3\u675f') + '</div>' +
-    '<div class="mst">' + (won ? '\u7b2c' + (lastWin + 1) + '\u6b21\u731c\u4e2d' : '\u672a\u80fd\u731c\u51fa\u7b54\u6848') + (State.startTime > 0 ? ' \u00b7 \u7528\u65f6 ' + fmtTime(elapsed) : '') + '</div>' +
+    '<div class="mst">' + sub + '</div>' +
     '<div class="mw">' + State.answer + '</div>' + dictHtml +
     '<div class="mm">' + (meaning || '\u6682\u65e0\u91ca\u4e49') + '</div>' +
     '<div class="dt">\u731c\u8bcd\u5206\u5e03 (' + diffName + ' \u00b7 ' + State.len + '\u5b57\u6bcd' + timedLabel + ')</div>' + distHtml +
-    '<div class="stats"><div class="si"><div class="sn">' + s.played + '</div><div class="sl">\u603b\u573a\u6b21</div></div><div class="si"><div class="sn">' + winRate + '%</div><div class="sl">\u80dc\u7387</div></div><div class="si"><div class="sn">' + s.streak + '</div><div class="sl">\u8fde\u80dc</div></div><div class="si"><div class="sn">' + s.maxStreak + '</div><div class="sl">\u6700\u957f\u8fde\u80dc</div></div></div>' +
+    buildStatsHtml(s) +
     '<div class="mb"><button class="mbtn sh" id="shareBtn">\u5206\u4eab</button><button class="mbtn p" id="playAgain">\u518d\u6765\u4e00\u5c40</button><button class="mbtn s" id="backHome">\u9996\u9875</button></div>';
   showModal();
   document.getElementById('playAgain').onclick = () => { hideModal(); newGame(); };
@@ -186,20 +211,14 @@ function shareResult() {
 }
 
 function showStats() {
-  const s = State.stats[statKey()] || { played: 0, won: 0, streak: 0, maxStreak: 0, dist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
-  const winRate = s.played ? Math.round(s.won / s.played * 100) : 0;
-  const maxD = Math.max(1, ...s.dist);
-  let distHtml = '';
-  for (let i = 0; i < 10; i++) {
-    const cnt = s.dist[i] || 0;
-    distHtml += '<div class="dr"><div class="dn">' + (i + 1) + '</div><div class="db" style="width:' + Math.max(8, cnt / maxD * 100) + '%">' + cnt + '</div></div>';
-  }
+  const s = State.stats[statKey()] || emptyStat();
+  const distHtml = buildDistHtml(s, 10, -1);
   const diffName = DIFFICULTIES.find(x => x.id === State.diff).name;
   const timedLabel = State.timed > 0 ? ' \u00b7 \u9650\u65f6' + State.timed + 's' : '';
   document.getElementById('modalContent').innerHTML =
     '<div class="mt">\u7edf\u8ba1</div>' +
     '<div class="mst">' + diffName + ' \u00b7 ' + State.len + '\u5b57\u6bcd' + timedLabel + '</div>' +
-    '<div class="stats"><div class="si"><div class="sn">' + s.played + '</div><div class="sl">\u603b\u573a\u6b21</div></div><div class="si"><div class="sn">' + winRate + '%</div><div class="sl">\u80dc\u7387</div></div><div class="si"><div class="sn">' + s.streak + '</div><div class="sl">\u8fde\u80dc</div></div><div class="si"><div class="sn">' + s.maxStreak + '</div><div class="sl">\u6700\u957f\u8fde\u80dc</div></div></div>' +
+    buildStatsHtml(s) +
     '<div class="dt">\u731c\u8bcd\u5206\u5e03</div>' + distHtml +
     '<div class="mb"><button class="mbtn p" id="closeStats">\u5173\u95ed</button></div>';
   showModal();
@@ -215,12 +234,12 @@ function showHelp() {
     '<div class="hi"><div class="hts"><div class="hti present">O</div></div><div>\u5b57\u6bcd\u6b63\u786e\u4f46\u4f4d\u7f6e\u9519\u8bef</div></div>' +
     '<div class="hi"><div class="hts"><div class="hti absent">D</div></div><div>\u5b57\u6bcd\u4e0d\u5728\u5355\u8bcd\u4e2d</div></div>' +
     '<div class="hi"><div class="hts"><div class="hti locked">?</div></div><div>\u63d0\u793a\u9501\u5b9a\u67d0\u4f4d\u7f6e\u5b57\u6bcd</div></div>' +
-    '<div class="hi"><div class="hts"><div class="hti excluded">E</div></div><div>\u6392\u9664:\u786e\u8ba4\u4e0d\u5728\u7b54\u6848\u4e2d</div></div>' +
+    '<div class="hi"><div class="hts"><div class="hti excluded">E</div></div><div>\u6392\u9664:\u6807\u8bb0\u4e3a\u5df2\u6392\u9664(\u53ef\u80fd\u8bef\u5224)</div></div>' +
     '</div>' +
     '<div class="dt">\u8f85\u52a9\u529f\u80fd</div>' +
     '<div class="help-list">' +
     '<div class="hi">\u63d0\u793a:\u9501\u5b9a\u4e00\u4e2a\u6b63\u786e\u5b57\u6bcd\u4f4d\u7f6e(\u6570\u91cf\u9996\u9875\u53ef\u9009 0-3)</div>' +
-    '<div class="hi">\u6392\u9664:\u81ea\u52a8\u6392\u9664\u4e0d\u5728\u7b54\u6848\u4e2d\u7684\u5b57\u6bcd(\u6570\u91cf\u9996\u9875\u53ef\u9009 0-6)</div>' +
+    '<div class="hi">\u6392\u9664:\u968f\u673a\u6392\u9664\u672a\u4f7f\u7528\u5b57\u6bcd,\u6709\u8bef\u4e2d\u7b54\u6848\u98ce\u9669(\u6570\u91cf\u9996\u9875\u53ef\u9009 0-6)</div>' +
     '<div class="hi">\u653e\u5f03:\u7ed3\u675f\u672c\u5c40\u5e76\u663e\u793a\u7b54\u6848</div>' +
     '<div class="hi">\u9650\u65f6:\u5012\u8ba1\u65f6\u6a21\u5f0f,\u65f6\u95f4\u5230\u81ea\u52a8\u5224\u8d1f</div>' +
     '<div class="hi">\u5019\u9009:\u5b9e\u65f6\u663e\u793a\u5269\u4f59\u53ef\u80fd\u8bcd\u6570</div>' +
@@ -329,15 +348,13 @@ function showLibrary() {
     words.slice(0, 100).forEach(w => {
       const hasDict = !!DICT[w];
       const mean = MEAN[w] || '';
-      html += '<div class="lib-item ' + (hasDict ? 'has-dict' : '') + '" data-word="' + w + '"><span class="lw">' + w + '</span>' + (hasDict ? '<span class="ld">\ud83d\udcd6</span>' : '<span class="ld" style="opacity:.3">\u00b7</span>') + '<span class="lm">' + mean + '</span></div>';
+      html += '<div class="lib-item ' + (hasDict ? 'has-dict' : '') + '" data-word="' + w + '"><span class="lw">' + w + '</span>' + (hasDict ? '<span class="ld">\u8be6</span>' : '<span class="ld" style="opacity:.3">\u00b7</span>') + '<span class="lm">' + mean + '</span></div>';
     });
     if (words.length > 100) html += '<div style="text-align:center;opacity:.5;padding:8px;font-size:11px">...\u8fd8\u6709 ' + (words.length - 100) + ' \u4e2a</div>';
     list.innerHTML = html;
     list.querySelectorAll('.lib-item').forEach(el => { el.onclick = () => showWordDetail(el.dataset.word); });
   }
-  const allWords = [];
-  for (const d in VOCAB) for (const l in VOCAB[d]) allWords.push(...VOCAB[d][l]);
-  const uniqueWords = [...new Set(allWords)].sort();
+  const uniqueWords = getAllWords();
   render(uniqueWords.slice(0, 100));
   function doSearch() {
     const q = input.value.trim().toUpperCase();
