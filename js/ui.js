@@ -327,43 +327,172 @@ function showDictLookup() {
   document.getElementById('closeDict').onclick = hideModal;
 }
 
+// 词库浏览状态
+const LIB_PAGE_SIZE = 40;
+let libState = { mode: 'word', diff: 'all', len: 'all', page: 0, query: '', list: [] };
+
+function getLibWordList() {
+  let words = [];
+  if (libState.diff === 'all') {
+    for (const d in VOCAB) for (const l in VOCAB[d]) words.push(...VOCAB[d][l]);
+  } else {
+    const d = libState.diff;
+    if (libState.len === 'all') {
+      for (const l in VOCAB[d]) words.push(...VOCAB[d][l]);
+    } else {
+      words = VOCAB[d][libState.len] ? VOCAB[d][libState.len].slice() : [];
+    }
+  }
+  return [...new Set(words)].sort();
+}
+
+function getLibIdiomList() {
+  return Object.keys(IDIOM || {}).sort((a, b) => a.localeCompare(b, 'zh'));
+}
+
+function libFilterWords(list) {
+  const q = libState.query;
+  if (!q) return list;
+  return list.filter(w => w.includes(q) || (MEAN[w] && MEAN[w].indexOf(q) >= 0));
+}
+
 function showLibrary() {
+  libState.mode = 'word';
+  libState.diff = 'all';
+  libState.len = 'all';
+  libState.page = 0;
+  libState.query = '';
+  libState.list = getLibWordList();
+  renderLibrary();
+}
+
+function renderLibrary() {
+  let filterHtml = '<div class="lib-tabs">';
+  filterHtml += '<button class="lib-tab' + (libState.mode === 'word' ? ' active' : '') + '" data-mode="word">\u8bcd\u6c47</button>';
+  filterHtml += '<button class="lib-tab' + (libState.mode === 'idiom' ? ' active' : '') + '" data-mode="idiom">\u6210\u8bed</button>';
+  filterHtml += '</div>';
+  if (libState.mode === 'word') {
+    filterHtml += '<div class="lib-filters"><div class="lib-fgroup">';
+    filterHtml += '<button class="lib-f' + (libState.diff === 'all' ? ' active' : '') + '" data-diff="all">\u5168\u90e8</button>';
+    DIFFICULTIES.forEach(d => {
+      filterHtml += '<button class="lib-f' + (libState.diff === d.id ? ' active' : '') + '" data-diff="' + d.id + '">' + d.name + '</button>';
+    });
+    filterHtml += '</div><div class="lib-fgroup">';
+    filterHtml += '<button class="lib-f' + (libState.len === 'all' ? ' active' : '') + '" data-len="all">\u5168\u957f</button>';
+    LENGTHS.forEach(l => {
+      filterHtml += '<button class="lib-f' + (libState.len == l ? ' active' : '') + '" data-len="' + l + '">' + l + '\u5b57</button>';
+    });
+    filterHtml += '</div></div>';
+    filterHtml += '<div class="lib-search"><input type="text" id="libInput" placeholder="\u8f93\u5165\u5355\u8bcd\u6216\u91ca\u4e49..." maxlength="20" autocomplete="off"><button class="lib-btn" id="libSearch">\u67e5\u8be2</button></div>';
+  } else {
+    filterHtml += '<div class="lib-search"><input type="text" id="libInput" placeholder="\u8f93\u5165\u6210\u8bed..." maxlength="20" autocomplete="off"><button class="lib-btn" id="libSearch">\u67e5\u8be2</button></div>';
+  }
   document.getElementById('modalContent').innerHTML =
     '<div class="mt">\u8bcd\u5e93</div>' +
-    '<div class="mst">\u5bf9\u7167\u725b\u6d25\u8bcd\u5178 \u00b7 5\u96be\u5ea6\u00d74\u957f\u5ea6</div>' +
-    '<div class="lib-search"><input type="text" id="libInput" placeholder="\u8f93\u5165\u5355\u8bcd\u67e5\u8bcd..." maxlength="10" autocomplete="off"><button class="lib-btn" id="libSearch">\u67e5\u8be2</button></div>' +
+    '<div class="mst">\u5bf9\u7167\u725b\u6d25\u8bcd\u5178 \u00b7 \u70b9\u51fb\u67e5\u770b\u91ca\u4e49</div>' +
+    filterHtml +
     '<div class="lib-list" id="libList"></div>' +
-    '<div class="lib-stats" id="libStats"></div>' +
+    '<div class="lib-page" id="libPage"></div>' +
     '<div class="mb"><button class="mbtn s" id="closeLib">\u5173\u95ed</button></div>';
   showModal();
+  document.getElementById('closeLib').onclick = hideModal;
+  // 绑定筛选
+  document.querySelectorAll('.lib-tab').forEach(b => {
+    b.onclick = () => {
+      libState.mode = b.dataset.mode;
+      libState.page = 0;
+      libState.query = '';
+      libState.list = libState.mode === 'word' ? getLibWordList() : getLibIdiomList();
+      renderLibrary();
+    };
+  });
+  document.querySelectorAll('.lib-f').forEach(b => {
+    b.onclick = () => {
+      if (b.dataset.diff !== undefined) libState.diff = b.dataset.diff;
+      if (b.dataset.len !== undefined) libState.len = b.dataset.len === 'all' ? 'all' : parseInt(b.dataset.len);
+      libState.page = 0;
+      libState.list = getLibWordList();
+      renderLibrary();
+    };
+  });
+  // 搜索
   const input = document.getElementById('libInput');
+  if (input) {
+    const doSearch = () => {
+      libState.query = input.value.trim().toUpperCase();
+      libState.page = 0;
+      renderLibList();
+    };
+    document.getElementById('libSearch').onclick = doSearch;
+    input.onkeydown = e => { if (e.key === 'Enter') doSearch(); };
+  }
+  renderLibList();
+}
+
+function renderLibList() {
   const list = document.getElementById('libList');
-  const stats = document.getElementById('libStats');
-  let cnt = 0;
-  for (const d in VOCAB) for (const l in VOCAB[d]) cnt += VOCAB[d][l].length;
-  stats.innerHTML = '<div style="font-size:11px;opacity:.7;margin:6px 0">\u5171 ' + cnt + ' \u8bcd \u00b7 ' + Object.keys(DICT).length + '+ \u8bcd\u6709\u91ca\u4e49</div>';
-  function render(words) {
-    if (!words.length) { list.innerHTML = '<div style="text-align:center;opacity:.6;padding:20px">\u672a\u627e\u5230\u8be5\u8bcd</div>'; return; }
-    let html = '';
-    words.slice(0, 100).forEach(w => {
+  const pageBox = document.getElementById('libPage');
+  let filtered;
+  if (libState.mode === 'word') {
+    filtered = libFilterWords(libState.list);
+  } else {
+    const q = libState.query.toLowerCase();
+    filtered = q ? libState.list.filter(w => w.indexOf(q) >= 0 || (IDIOM[w] && IDIOM[w].indexOf(q) >= 0)) : libState.list;
+  }
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / LIB_PAGE_SIZE));
+  if (libState.page >= totalPages) libState.page = totalPages - 1;
+  if (libState.page < 0) libState.page = 0;
+  const start = libState.page * LIB_PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + LIB_PAGE_SIZE);
+  let html = '';
+  if (!total) {
+    html = '<div style="text-align:center;opacity:.6;padding:20px">\u672a\u627e\u5230</div>';
+  } else if (libState.mode === 'word') {
+    pageItems.forEach(w => {
       const hasDict = !!DICT[w];
       const mean = MEAN[w] || '';
       html += '<div class="lib-item ' + (hasDict ? 'has-dict' : '') + '" data-word="' + w + '"><span class="lw">' + w + '</span>' + (hasDict ? '<span class="ld">\u8be6</span>' : '<span class="ld" style="opacity:.3">\u00b7</span>') + '<span class="lm">' + mean + '</span></div>';
     });
-    if (words.length > 100) html += '<div style="text-align:center;opacity:.5;padding:8px;font-size:11px">...\u8fd8\u6709 ' + (words.length - 100) + ' \u4e2a</div>';
-    list.innerHTML = html;
-    list.querySelectorAll('.lib-item').forEach(el => { el.onclick = () => showWordDetail(el.dataset.word); });
+  } else {
+    pageItems.forEach(w => {
+      const mean = IDIOM[w] || '';
+      html += '<div class="lib-item idiom" data-idiom="' + w + '"><span class="lw zhi">' + w + '</span><span class="lm">' + mean + '</span></div>';
+    });
   }
-  const uniqueWords = getAllWords();
-  render(uniqueWords.slice(0, 100));
-  function doSearch() {
-    const q = input.value.trim().toUpperCase();
-    if (!q) return render(uniqueWords.slice(0, 100));
-    render(uniqueWords.filter(w => w.includes(q)));
+  list.innerHTML = html;
+  // 分页控件
+  let ph = '';
+  if (totalPages > 1) {
+    ph += '<button class="lib-pg" id="libPrev"' + (libState.page <= 0 ? ' disabled' : '') + '>\u4e0a\u4e00\u9875</button>';
+    ph += '<span class="lib-pginfo">' + (libState.page + 1) + '/' + totalPages + ' \u00b7 ' + total + '\u6761</span>';
+    ph += '<button class="lib-pg" id="libNext"' + (libState.page >= totalPages - 1 ? ' disabled' : '') + '>\u4e0b\u4e00\u9875</button>';
+  } else {
+    ph = '<span class="lib-pginfo">' + total + ' \u6761</span>';
   }
-  document.getElementById('libSearch').onclick = doSearch;
-  input.onkeydown = e => { if (e.key === 'Enter') doSearch(); };
-  document.getElementById('closeLib').onclick = hideModal;
+  pageBox.innerHTML = ph;
+  const prev = document.getElementById('libPrev');
+  const next = document.getElementById('libNext');
+  if (prev) prev.onclick = () => { if (libState.page > 0) { libState.page--; renderLibList(); } };
+  if (next) next.onclick = () => { if (libState.page < totalPages - 1) { libState.page++; renderLibList(); } };
+  // 绑定点击
+  list.querySelectorAll('.lib-item').forEach(el => {
+    el.onclick = () => {
+      if (libState.mode === 'word') showWordDetail(el.dataset.word);
+      else showIdiomDetail(el.dataset.idiom);
+    };
+  });
+}
+
+function showIdiomDetail(idiom) {
+  const mean = IDIOM[idiom] || '';
+  document.getElementById('modalContent').innerHTML =
+    '<div class="mt" style="letter-spacing:2px;font-size:22px">' + idiom + '</div>' +
+    '<div class="mst" style="text-align:left;max-width:300px;line-height:1.7">' + mean + '</div>' +
+    '<div class="mb"><button class="mbtn s" id="backLib">\u8fd4\u56de\u8bcd\u5e93</button><button class="mbtn p" id="closeWord">\u5173\u95ed</button></div>';
+  showModal();
+  document.getElementById('backLib').onclick = renderLibrary;
+  document.getElementById('closeWord').onclick = hideModal;
 }
 
 function showHome() {
