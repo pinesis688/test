@@ -43,10 +43,12 @@ function rebuildValidSet() {
   }
 }
 
+// 用 UTC+8(北京时间)计算日期 key,避免跨时区用户连续签到中断
 function dateKey(d) {
-  return d.getFullYear() + '-' +
-    (d.getMonth() + 1).toString().padStart(2, '0') + '-' +
-    d.getDate().toString().padStart(2, '0');
+  const utc8 = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000);
+  return utc8.getFullYear() + '-' +
+    (utc8.getMonth() + 1).toString().padStart(2, '0') + '-' +
+    utc8.getDate().toString().padStart(2, '0');
 }
 
 function loadSignin() {
