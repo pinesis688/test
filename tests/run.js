@@ -111,6 +111,14 @@ const E = x => w.eval(x);
   ok('成语列表非空', w.document.querySelectorAll('#libList .lib-item').length > 0);
   ok('成语项有橙色标识', !!w.document.querySelector('.lib-item.idiom'));
 
+  // --- 签到日期 key 跨时区一致性(UTC+8) ---
+  // 同一北京时间瞬间,不同本地时区应得到相同 dateKey
+  const bjNoon = Date.UTC(2026, 6, 9, 4, 0, 0); // UTC 04:00 = 北京 12:00
+  const k1 = E('dateKey(new Date(' + bjNoon + '))');
+  E('Date.prototype.getTimezoneOffset = function(){return 300}'); // 模拟 UTC-5
+  const k2 = E('dateKey(new Date(' + bjNoon + '))');
+  ok('跨时区签到 key 一致(UTC+8)', k1 === k2, { k1, k2 });
+
   console.log('\n==== ' + pass + ' passed, ' + fail + ' failed ====');
   process.exit(fail === 0 ? 0 : 1);
 })().catch(e => { console.error('TEST ERROR', e); process.exit(1); });
