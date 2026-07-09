@@ -65,7 +65,7 @@ window.State = {
   rows: [], curRow: 0, curCol: 0,
   hintLocked: {}, hintsUsed: 0, hintsLeft: 0,
   excludeUsed: false, excludedLetters: new Set(),
-  gameOver: false, won: false,
+  gameOver: false, won: false, evaluating: false,
   keyState: {},
   timer: null, startTime: 0, endTime: 0, timeLeft: 0,
   stats: loadStats()
