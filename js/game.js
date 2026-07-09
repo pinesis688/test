@@ -137,11 +137,28 @@ function stopTimer() {
   if (State.startTime > 0 && State.endTime === 0) State.endTime = Date.now();
 }
 
+function resumeTimer() {
+  if (State.timed <= 0 || State.gameOver) return;
+  State.endTime = 0;
+  State.startTime = Date.now() - (State.timed - State.timeLeft) * 1000;
+  State.timer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - State.startTime) / 1000);
+    State.timeLeft = Math.max(0, State.timed - elapsed);
+    if (State.timeLeft <= 0) {
+      State.timeLeft = 0;
+      stopTimer();
+      timeUp();
+    }
+    updateGameInfo();
+  }, 500);
+}
+
 function timeUp() {
   if (State.gameOver) return;
   State.gameOver = true;
   State.won = false;
   toast('时间到');
+  saveGameState();
   recordResult(false);
 }
 
@@ -202,7 +219,82 @@ function countCandidates() {
   return count;
 }
 
+function serializeGame() {
+  const rows = [];
+  for (let r = 0; r <= State.curRow && r < State.attempts; r++) {
+    const row = State.rows[r];
+    if (!row) break;
+    const cells = [];
+    for (let c = 0; c < State.len; c++) {
+      const t = row[c];
+      const cls = ['correct', 'present', 'absent', 'excluded', 'locked', 'filled']
+        .filter(x => t.classList.contains(x));
+      cells.push({ t: t.textContent, c: cls });
+    }
+    rows.push(cells);
+  }
+  return {
+    diff: State.diff, len: State.len, attempts: State.attempts,
+    hints: State.hints, hintsLeft: State.hintsLeft, hintsUsed: State.hintsUsed,
+    excludeCount: State.excludeCount, excludeUsed: State.excludeUsed,
+    excludedLetters: [...State.excludedLetters],
+    timed: State.timed, timeLeft: State.timeLeft,
+    answer: State.answer, curRow: State.curRow, curCol: State.curCol,
+    hintLocked: { ...State.hintLocked },
+    keyState: { ...State.keyState },
+    gameOver: State.gameOver, won: State.won,
+    rows
+  };
+}
+
+function saveGameState() {
+  if (!State.answer) return;
+  saveGameSave(serializeGame());
+}
+
+function restoreGameState(saved) {
+  State.diff = saved.diff;
+  State.len = saved.len;
+  State.attempts = saved.attempts;
+  State.hints = saved.hints;
+  State.hintsLeft = saved.hintsLeft;
+  State.hintsUsed = saved.hintsUsed;
+  State.excludeCount = saved.excludeCount;
+  State.excludeUsed = saved.excludeUsed;
+  State.excludedLetters = new Set(saved.excludedLetters);
+  State.timed = saved.timed;
+  State.timeLeft = saved.timeLeft;
+  State.answer = saved.answer;
+  State.curRow = saved.curRow;
+  State.curCol = saved.curCol;
+  State.hintLocked = saved.hintLocked;
+  State.keyState = saved.keyState;
+  State.gameOver = saved.gameOver;
+  State.won = saved.won;
+  State.evaluating = false;
+  State.startTime = 0;
+  State.endTime = 0;
+  State.wordPool = getWordPool(State.diff, State.len);
+  rebuildValidSet();
+  buildBoard();
+  buildKeyboard();
+  // 回填已提交行
+  for (let r = 0; r < saved.rows.length; r++) {
+    const cells = saved.rows[r];
+    if (!State.rows[r]) break;
+    for (let c = 0; c < State.len; c++) {
+      const t = State.rows[r][c];
+      t.textContent = cells[c].t;
+      cells[c].c.forEach(cls => t.classList.add(cls));
+    }
+  }
+  refreshAllKeys();
+  updateGameInfo();
+  if (!State.gameOver) resumeTimer();
+}
+
 function newGame() {
+  clearGameSave();
   const pool = getWordPool(State.diff, State.len);
   if (pool.length === 0) {
     toast('该难度下无此长度的词汇');
@@ -280,6 +372,7 @@ function useHint() {
   }
   toast(`第 ${c + 1} 位: ${State.answer[c]}`);
   updateGameInfo();
+  saveGameState();
 }
 
 function useExclude() {
@@ -314,6 +407,7 @@ function useExclude() {
   refreshAllKeys();
   toast(`已排除 ${excluded.join(' ')}`);
   updateGameInfo();
+  saveGameState();
 }
 
 function surrender() {
@@ -321,6 +415,7 @@ function surrender() {
   State.gameOver = true;
   State.won = false;
   stopTimer();
+  saveGameState();
   recordResult(false);
 }
 
@@ -369,11 +464,13 @@ function evaluateGuess(guess) {
       State.won = true;
       stopTimer();
       tiles.forEach((t, i) => setTimeout(() => t.classList.add('win'), i * 100));
+      saveGameState();
       setTimeout(() => recordResult(true, finishedRow + 1), 600);
     } else if (finishedRow + 1 >= State.attempts) {
       State.gameOver = true;
       State.won = false;
       stopTimer();
+      saveGameState();
       setTimeout(() => recordResult(false), 200);
     } else {
       State.curRow++;
@@ -383,6 +480,7 @@ function evaluateGuess(guess) {
         if (State.hintLocked[c] || State.rows[State.curRow][c].textContent) State.curCol++;
       }
       updateGameInfo();
+      saveGameState();
     }
   }, delay);
 }
