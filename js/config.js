@@ -61,6 +61,21 @@ function saveSignin(d) {
   catch (e) {}
 }
 
+function loadGameSave() {
+  try { return JSON.parse(localStorage.getItem(SK + '_game') || 'null'); }
+  catch (e) { return null; }
+}
+
+function saveGameSave(state) {
+  try { localStorage.setItem(SK + '_game', JSON.stringify(state)); }
+  catch (e) {}
+}
+
+function clearGameSave() {
+  try { localStorage.removeItem(SK + '_game'); }
+  catch (e) {}
+}
+
 window.State = {
   diff: 'gaokao', len: 5, attempts: 6, hints: 1, excludeCount: 2, timed: 0,
   answer: '', wordPool: [], validSet: new Set(),

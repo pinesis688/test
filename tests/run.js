@@ -119,6 +119,32 @@ const E = x => w.eval(x);
   const k2 = E('dateKey(new Date(' + bjNoon + '))');
   ok('跨时区签到 key 一致(UTC+8)', k1 === k2, { k1, k2 });
 
+  // --- 游戏状态持久化(误刷新可恢复) ---
+  E('State.diff="gaokao";State.len=5;State.attempts=6;State.hints=1;State.excludeCount=2;State.timed=0');
+  E('newGame()');
+  const ans2 = w.State.answer;
+  E('handleKey("' + ans2[0] + '")');
+  E('handleKey("' + ans2[1] + '")');
+  E('useHint()'); // 锁定一位 + 持久化
+  const savedRaw = w.localStorage.getItem('wordle_zh_v6_game');
+  ok('存档已写入 localStorage', !!savedRaw);
+  const saved2 = JSON.parse(savedRaw);
+  ok('存档含答案与已猜行', saved2.answer === ans2 && saved2.rows.length === 1);
+  ok('存档含 hintLocked', Object.keys(saved2.hintLocked).length === 1);
+  // 模拟刷新:清空当前状态后从存档恢复
+  E('State.answer="";State.curRow=99;State.rows=[]');
+  E('restoreGameState(' + JSON.stringify(saved2).replace(/</g,'\\u003c') + ')');
+  ok('恢复后答案正确', w.State.answer === ans2);
+  ok('恢复后 curRow 正确', w.State.curRow === 0);
+  ok('恢复后 hintLocked 保留', Object.keys(w.State.hintLocked).length === 1);
+  ok('恢复后已猜行回填', w.State.rows[0] && w.State.rows[0][0].textContent === ans2[0]);
+  // newGame 应清除存档
+  E('newGame()');
+  ok('newGame 清除存档', !w.localStorage.getItem('wordle_zh_v6_game'));
+  // 已结束对局刷新不应恢复
+  E('State.gameOver=true;saveGameState()');
+  E('clearGameSave()'); // 模拟 DOMContentLoaded 中 gameOver 分支
+
   console.log('\n==== ' + pass + ' passed, ' + fail + ' failed ====');
   process.exit(fail === 0 ? 0 : 1);
 })().catch(e => { console.error('TEST ERROR', e); process.exit(1); });

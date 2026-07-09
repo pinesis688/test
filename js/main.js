@@ -48,4 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
   buildDiffTabs();
   updateHomeCounts();
   bindEvents();
+  const saved = loadGameSave();
+  if (saved && saved.answer && !saved.gameOver) {
+    restoreGameState(saved);
+    showGame();
+    toast('已恢复未完成的对局');
+  } else if (saved && saved.gameOver) {
+    clearGameSave();
+  }
 });
