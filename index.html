@@ -13,6 +13,7 @@
 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 </button>
 <div class="brand">Wordle</div>
+<button class="a11y-btn" id="a11yBtn" title="高对比/色盲模式" aria-label="高对比与色盲图案模式" aria-pressed="false">A+</button>
 <div class="diff-tabs" id="diffTabs"></div>
 </div>
 <div class="home-body">
@@ -28,6 +29,7 @@
 </button>
 <div class="quick-row">
 <button class="quick-btn" id="tabBook">词库</button>
+<button class="quick-btn" id="tabReview">复习</button>
 <button class="quick-btn" id="tabStats">统计</button>
 </div>
 <div class="home-spacer"></div>
@@ -46,9 +48,12 @@
 <div class="sp-item"><div class="sp-label">词汇难度 <b id="spDiffHint">高考 · 0词</b></div><div class="sp-opts c5" id="spDiffOpts"></div></div>
 <div class="sp-item"><div class="sp-label">单词长度 <b>字母数</b></div><div class="sp-opts c4" id="spLenOpts"></div></div>
 <div class="sp-item"><div class="sp-label">尝试次数 <b>行数</b></div><div class="sp-opts c3" id="spAttemptOpts"></div></div>
+<button class="sp-adv-toggle" id="spAdvToggle" aria-expanded="false">高级选项 <span class="sp-adv-caret">▾</span></button>
+<div class="sp-advanced" id="spAdvanced" hidden>
 <div class="sp-item"><div class="sp-label">提示数量 <b>锁定字母</b></div><div class="sp-opts c4" id="spHintOpts"></div></div>
 <div class="sp-item"><div class="sp-label">排除数量 <b>排除字母</b></div><div class="sp-opts c7" id="spExcludeOpts"></div></div>
 <div class="sp-item"><div class="sp-label">限时模式 <b>秒/局</b></div><div class="sp-opts c4" id="spTimedOpts"></div></div>
+</div>
 </div>
 <button class="sp-go" id="spGo">开始游戏</button>
 </div>
@@ -67,15 +72,14 @@
 <button class="gb" id="surrenderBtn">放弃</button>
 </div>
 </div>
-<div id="board"></div>
-<div id="kb"></div>
+<div id="board" role="grid" aria-label="猜词棋盘"></div>
+<div id="kb" role="group" aria-label="字母键盘"></div>
 </div>
-<div id="toast"></div>
-<div id="modal"><div class="mc" id="modalContent"></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal" role="dialog" aria-modal="true" aria-label="弹窗"><div class="mc" id="modalContent"></div></div>
 
 <script src="data/vocab.js"></script>
 <script src="data/mean.js"></script>
-<script src="data/dict.js"></script>
 <script src="data/idiom.js"></script>
 <script src="js/config.js"></script>
 <script src="js/game.js"></script>

@@ -11,9 +11,20 @@ function bindEvents() {
   document.getElementById('signinBtn').onclick = doSignin;
   document.getElementById('startBtn').onclick = doStart;
   document.getElementById('tabBook').onclick = showLibrary;
+  document.getElementById('tabReview').onclick = showReview;
   document.getElementById('tabStats').onclick = showStats;
   document.getElementById('spClose').onclick = closeSettings;
   document.getElementById('spGo').onclick = () => { closeSettings(); if (newGame()) showGame(); };
+  const advToggle = document.getElementById('spAdvToggle');
+  if (advToggle) {
+    advToggle.onclick = () => {
+      const adv = document.getElementById('spAdvanced');
+      const open = adv.hasAttribute('hidden');
+      if (open) adv.removeAttribute('hidden'); else adv.setAttribute('hidden', '');
+      advToggle.classList.toggle('open', open);
+      advToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+  }
   document.getElementById('homeBtn').onclick = () => { hideModal(); showHome(); };
   document.getElementById('helpBtn').onclick = showHelp;
   document.getElementById('statsBtn').onclick = showStats;
@@ -21,6 +32,16 @@ function bindEvents() {
   document.getElementById('excludeBtn').onclick = useExclude;
   document.getElementById('surrenderBtn').onclick = surrender;
   document.getElementById('dictBtn').onclick = showDictLookup;
+
+  const a11yBtn = document.getElementById('a11yBtn');
+  if (a11yBtn) {
+    a11yBtn.onclick = () => {
+      const on = document.body.classList.toggle('hc');
+      a11yBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      try { localStorage.setItem(SK + '_hc', on ? '1' : '0'); } catch (e) {}
+      toast(on ? '\u9ad8\u5bf9\u6bd4\u6a21\u5f0f\u5df2\u5f00\u542f' : '\u9ad8\u5bf9\u6bd4\u6a21\u5f0f\u5df2\u5173\u95ed');
+    };
+  }
 
   document.addEventListener('keydown', e => {
     if (!document.getElementById('game').classList.contains('show')) return;
@@ -45,6 +66,13 @@ function bindEvents() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  try {
+    if (localStorage.getItem(SK + '_hc') === '1') {
+      document.body.classList.add('hc');
+      const b = document.getElementById('a11yBtn');
+      if (b) b.setAttribute('aria-pressed', 'true');
+    }
+  } catch (e) {}
   buildDiffTabs();
   updateHomeCounts();
   bindEvents();
