@@ -145,6 +145,8 @@ h1{font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;co
 .mbtn.s{background:#2a2a30}
 .mbtn.s:hover{background:#34343c}
 .mbtn.sh{background:#c9712f}
+.mbtn.danger{background:#e7534b}
+.mbtn.danger:hover{background:#f06357}
 .help-list{text-align:left;margin-bottom:18px}
 .hi{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;line-height:1.4;color:#cfcfd4}
 .hts{display:flex;gap:3px;flex-shrink:0}
@@ -228,6 +230,8 @@ body.hc .signin-streak{color:#f5793a}
 body.hc .start-btn{background:#f5793a;box-shadow:0 2px 10px rgba(245,121,58,.25)}
 body.hc .start-btn:hover{background:#ff8c4a}
 body.hc .sp-opt.active,body.hc .mbtn.p,body.hc .hclose,body.hc .lib-btn,body.hc .sp-go{background:#f5793a}
+/* HC 下"不记得"用深色+斜纹,与橙色"记得"靠明度+纹理区分(色盲友好) */
+body.hc .mbtn.danger{background:#1c1c20;border:1px solid #f5b03a;color:#f5b03a;background-image:repeating-linear-gradient(45deg,rgba(245,176,58,.18) 0 3px,transparent 3px 8px)}
 
 /* 尊重系统"减少动效"偏好:关闭装饰性动画 */
 @media (prefers-reduced-motion: reduce){

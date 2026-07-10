@@ -213,6 +213,11 @@ const E = x => w.eval(x);
   E('srsAddWord("APPLE")');
   E('showReview()');
   E('document.getElementById("revealBtn").click()');
+  // HC 适配:不记得按钮用 class mbtn danger(非内联样式),便于 HC 覆盖
+  const unkBtn = w.document.getElementById('unknownBtn');
+  ok('复习卡揭示后出现不记得按钮', !!unkBtn);
+  ok('不记得按钮用 mbtn danger class', unkBtn && unkBtn.classList.contains('danger'));
+  ok('不记得按钮无内联 background 样式', unkBtn && !unkBtn.style.background);
   E('document.getElementById("knownBtn").click()'); // 进入完成态,触发 markSigninToday
   ok('完成一轮复习后自动签到', E('loadSignin().lastDate') === E('dateKey(new Date())'));
   try { w.localStorage.removeItem('wordle_zh_v6_srs'); } catch (e) {}
@@ -244,6 +249,18 @@ const E = x => w.eval(x);
   ok('getDictEntry 未知词返回 null', E('getDictEntry("ZZZZZ")') === null);
   ok('getDictEntry 条目含音标 p', typeof E('getDictEntry("ABODE").p') === 'string');
   ok('renderDictBlock 已知词含释义块', E('renderDictBlock("ABODE").html.indexOf("dwp")') >= 0);
+  ok('dictFailed 默认 false', E('dictFailed()') === false);
+  ok('dictLoading 已加载后为 false', E('dictLoading()') === false);
+  // 失败/加载兜底渲染:mock 三个状态函数,验证不同分支文案
+  E('window._ge=getDictEntry;window._dl=dictLoaded;window._df=dictFailed;');
+  E('window.getDictEntry=()=>null;window.dictLoaded=()=>false;');
+  E('window.dictFailed=()=>true;');
+  ok('失败态显示"加载失败"(非转圈)', E('renderDictBlock("ABODE").html.indexOf("加载失败")') >= 0);
+  ok('失败态 resultDictMeanHtml 也显示失败', E('resultDictMeanHtml("ABODE").indexOf("加载失败")') >= 0);
+  E('window.dictFailed=()=>false;');
+  ok('加载态显示"加载释义…"', E('renderDictBlock("ABODE").html.indexOf("加载释义")') >= 0);
+  E('window.getDictEntry=window._ge;window.dictLoaded=window._dl;window.dictFailed=window._df;');
+  ok('恢复后 renderDictBlock 正常', E('renderDictBlock("ABODE").html.indexOf("dwp")') >= 0);
   w.__dictResolved = false;
   E('loadDict().then(() => { window.__dictResolved = true; })');
   await sleep(20);

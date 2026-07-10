@@ -206,7 +206,8 @@ function resultDictMeanHtml(word) {
     if (firstE) meaning = firstE.length > 60 ? firstE.substring(0, 60) + '...' : firstE;
   }
   if (!dictHtml && !dictLoaded()) {
-    dictHtml = '<div class="mphon" style="opacity:.5">\u52a0\u8f7d\u91ca\u4e49\u2026</div>';
+    if (dictFailed()) dictHtml = '<div class="mphon" style="opacity:.5;font-size:11px">\u8bcd\u5178\u8be6\u60c5\u52a0\u8f7d\u5931\u8d25</div>';
+    else dictHtml = '<div class="mphon" style="opacity:.5">\u52a0\u8f7d\u91ca\u4e49\u2026</div>';
   }
   return dictHtml + '<div class="mm">' + (meaning || '\u6682\u65e0\u91ca\u4e49') + '</div>';
 }
@@ -338,6 +339,9 @@ function renderDictBlock(word) {
     dictHtml = '<div class="dw"><div class="dwp">' + (dict.p || '') + '</div><div class="dws">' + (dict.s || '') + '</div>' + (dict.e ? '<div class="dwe">' + dict.e + '</div>' : '') + (dict.ex ? '<div class="dwex">\u4f8b: ' + dict.ex + '</div>' : '') + '</div>';
   } else if (dictLoaded()) {
     dictHtml = '<div class="dw" style="opacity:.7;text-align:center;padding:12px">\u8be5\u8bcd\u6682\u65e0\u91ca\u4e49<br><span style="font-size:11px;opacity:.6">' + (mean || '\u6682\u65e0\u91ca\u4e49') + '</span></div>';
+  } else if (dictFailed()) {
+    // 加载失败:不显示转圈,仅提示失败(中文释义仍由 mean 提供),重开弹窗即重试
+    dictHtml = '<div class="dw" style="opacity:.5;text-align:center;padding:8px;font-size:11px">\u8bcd\u5178\u8be6\u60c5\u52a0\u8f7d\u5931\u8d25</div>';
   } else {
     dictHtml = '<div class="dw" style="opacity:.5;text-align:center;padding:12px"><span class="dict-loading">\u52a0\u8f7d\u91ca\u4e49\u2026</span></div>';
   }
@@ -641,7 +645,7 @@ function renderReviewCard() {
   } else {
     body = '<div class="mw" style="letter-spacing:6px">' + word + '</div>' +
       '<div id="reviewDictWrap"><div class="mst">' + r.mean + '</div>' + r.html + '</div>' +
-      '<div class="mb"><button class="mbtn" id="unknownBtn" style="background:#e7534b">\u4e0d\u8bb0\u5f97</button><button class="mbtn p" id="knownBtn">\u8bb0\u5f97</button></div>';
+      '<div class="mb"><button class="mbtn danger" id="unknownBtn">\u4e0d\u8bb0\u5f97</button><button class="mbtn p" id="knownBtn">\u8bb0\u5f97</button></div>';
   }
   document.getElementById('modalContent').innerHTML =
     '<div class="mt">\u590d\u4e60 <span style="font-size:13px;color:#8a8a92;font-weight:400">' + progress + '</span></div>' +

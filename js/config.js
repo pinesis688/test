@@ -190,20 +190,22 @@ function toggleMaster(word) {
 // 首屏只加载 vocab/mean/idiom(小),游戏开始/查词/词库时再注入 dict.js
 let _dictPromise = null;
 let _dictLoaded = false;
+let _dictFailed = false;
 function loadDict() {
-  if (typeof DICT !== 'undefined') { _dictLoaded = true; return Promise.resolve(DICT); }
+  if (typeof DICT !== 'undefined') { _dictLoaded = true; _dictFailed = false; return Promise.resolve(DICT); }
   if (_dictPromise) return _dictPromise;
+  _dictFailed = false;
   _dictPromise = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'data/dict.js';
     s.async = true;
     s.onload = () => {
-      if (typeof DICT !== 'undefined') { _dictLoaded = true; resolve(DICT); }
-      else reject(new Error('DICT 未定义'));
+      if (typeof DICT !== 'undefined') { _dictLoaded = true; _dictFailed = false; resolve(DICT); }
+      else { _dictFailed = true; reject(new Error('DICT 未定义')); }
     };
-    s.onerror = () => reject(new Error('dict.js 加载失败'));
+    s.onerror = () => { _dictFailed = true; reject(new Error('dict.js 加载失败')); };
     document.body.appendChild(s);
-  });
+  }).catch(e => { _dictPromise = null; throw e; }); // 失败后清空,允许下次重试
   return _dictPromise;
 }
 // 安全读取词典条目(未加载时返回 null,不抛错)
@@ -211,7 +213,9 @@ function getDictEntry(word) {
   return (typeof DICT !== 'undefined' && DICT) ? (DICT[word] || null) : null;
 }
 function dictLoaded() { return _dictLoaded; }
-// 词典加载完成后回调一次;若已加载则同步执行
+function dictFailed() { return _dictFailed; }
+function dictLoading() { return !_dictLoaded && !_dictFailed && _dictPromise !== null; }
+// 词典加载完成后回调一次;若已加载则同步执行;失败则不回调(由调用方按 dictFailed 渲染兜底)
 function ensureDict(cb) {
   if (_dictLoaded) { cb(); return; }
   loadDict().then(cb).catch(() => {});
