@@ -478,6 +478,8 @@ function evaluateGuess(guess) {
       stopTimer();
       tiles.forEach((t, i) => setTimeout(() => t.classList.add('win'), i * 100));
       saveGameState();
+      const p = praiseWin(finishedRow + 1, State.attempts, Math.floor(gameElapsed() / 1000));
+      toast(p.title + ' ' + p.sub);
       recordResult(true, finishedRow + 1);
     } else if (finishedRow + 1 >= State.attempts) {
       State.gameOver = true;

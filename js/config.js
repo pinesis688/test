@@ -181,9 +181,52 @@ function toggleFav(word) {
 }
 function toggleMaster(word) {
   const m = loadMarks();
+  const wasMastered = !!m.master[word];
   if (m.master[word]) delete m.master[word]; else m.master[word] = 1;
   saveMarks(m);
   return !!m.master[word];
+}
+// 标记为已掌握(单向),返回是否首次掌握(用于里程碑鼓励)
+function markMastered(word) {
+  if (isMastered(word)) return false;
+  const m = loadMarks();
+  m.master[word] = 1;
+  saveMarks(m);
+  return true;
+}
+function masteredCount() { return Object.keys(loadMarks().master).length; }
+
+// ===== 正反馈:评价文案 + 里程碑 =====
+// 猜中评价:根据尝试次数/用时返回 {title, sub}
+function praiseWin(guesses, attempts, elapsedSec) {
+  let title, sub;
+  if (guesses === 1) { title = '\u4e00\u51fb\u547d\u4e2d!'; sub = '\u795e\u6765\u4e4b\u7b14'; }
+  else if (guesses <= 3) { title = '\u6f02\u4eae!'; sub = '\u601d\u8def\u6e05\u6670'; }
+  else if (guesses <= 5) { title = '\u731c\u4e2d\u4e86'; sub = '\u7a33\u6253\u7a33\u6253'; }
+  else { title = '\u9006\u8f6c\u80dc\u5229'; sub = '\u575a\u6301\u5230\u5e95'; }
+  if (State.timed > 0 && elapsedSec > 0 && elapsedSec <= State.timed / 3) {
+    sub += ' \u00b7 \u901f\u901a';
+  }
+  return { title, sub };
+}
+// 连胜里程碑:返回文案或 null(5/10/25/50/100)
+function streakMilestone(streak) {
+  const map = { 5: '\u8fde\u80dc5\u573a \u00b7 \u7a33\u4e86', 10: '\u5341\u8fde\u80dc \u00b7 \u706b\u70ed', 25: '25\u8fde\u80dc \u00b7 \u72b6\u6001\u795e\u52c7', 50: '50\u8fde\u80dc \u00b7 \u4f20\u5947', 100: '\u767e\u8fde\u80dc \u00b7 \u795e\u8ff9' };
+  return map[streak] || null;
+}
+// 复习完成评价:根据正确率
+function reviewPraise(known, total) {
+  if (total === 0) return '';
+  const r = known / total;
+  if (r === 1) return '\u5168\u90e8\u8bb0\u5f97 \u00b7 \u6ee1\u5206';
+  if (r >= 0.8) return '\u8bb0\u5f97\u5f88\u7262';
+  if (r >= 0.5) return '\u7ee7\u7eed\u5de9\u56fa';
+  return '\u52a0\u6cb9,\u4e0b\u6b21\u66f4\u597d';
+}
+// 掌握词数里程碑:返回文案或 null
+function masteredMilestone(n) {
+  const map = { 5: '\u5df2\u638c\u63e15\u8bcd', 10: '\u5df2\u638c\u63e110\u8bcd', 25: '\u5df2\u638c\u63e125\u8bcd', 50: '\u5df2\u638c\u63e150\u8bcd', 100: '\u5df2\u638c\u63e1100\u8bcd \u00b7 \u8fdb\u9636', 200: '\u5df2\u638c\u63e1200\u8bcd' };
+  return map[n] || null;
 }
 
 // ===== 词典懒加载:dict.js ~1.5MB,首屏不需要,按需注入 =====

@@ -272,6 +272,53 @@ const E = x => w.eval(x);
   ok('词池缓存内容非空', E('window.__p1.length') > 100, E('window.__p1.length'));
   ok('不同维度不共享缓存', E('getWordPool("gaokao",5) === getWordPool("cet4",5)') === false);
 
+  // --- 正反馈:评价文案 + 里程碑 ---
+  ok('一击命中评价', E('praiseWin(1,6,0).title') === '\u4e00\u51fb\u547d\u4e2d!');
+  ok('2-3次猜中评价漂亮', E('praiseWin(3,6,0).title') === '\u6f02\u4eae!');
+  ok('4-5次猜中评价稳打', E('praiseWin(5,6,0).title') === '\u731c\u4e2d\u4e86');
+  ok('6+次猜中评价逆转', E('praiseWin(8,8,0).title') === '\u9006\u8f6c\u80dc\u5229');
+  ok('限时快速猜中加速通', (function(){ E('State.timed=60'); const s=E('praiseWin(1,6,10).sub'); E('State.timed=0'); return s; })() === '\u795e\u6765\u4e4b\u7b14 \u00b7 \u901f\u901a');
+  E('State.timed=0');
+  ok('连胜里程碑5场有文案', E('streakMilestone(5)') !== null);
+  ok('连胜里程碑10场有文案', E('streakMilestone(10)') !== null);
+  ok('非里程碑连胜返回null', E('streakMilestone(7)') === null);
+  ok('复习全对满分评价', E('reviewPraise(5,5)') === '\u5168\u90e8\u8bb0\u5f97 \u00b7 \u6ee1\u5206');
+  ok('复习80%记得很牢', E('reviewPraise(4,5)') === '\u8bb0\u5f97\u5f88\u7262');
+  ok('复习<50%加油', E('reviewPraise(1,5)') === '\u52a0\u6cb9,\u4e0b\u6b21\u66f4\u597d');
+  // 掌握词数里程碑 + markMastered
+  try { w.localStorage.removeItem('wordle_zh_v6_marks'); } catch (e) {}
+  ok('masteredCount 初始0', E('masteredCount()') === 0);
+  ok('markMastered 首次返回true', E('markMastered("AAA")') === true);
+  ok('markMastered 重复返回false', E('markMastered("AAA")') === false);
+  ok('masteredCount 增为1', E('masteredCount()') === 1);
+  for (let i = 0; i < 4; i++) E('markMastered("W' + i + '")');
+  ok('掌握5词触发里程碑', E('masteredMilestone(masteredCount())') !== null, E('masteredCount()'));
+  try { w.localStorage.removeItem('wordle_zh_v6_marks'); } catch (e) {}
+
+  // --- 首页成长条显示掌握/收藏/待复习 ---
+  E('markMastered("APPLE")');
+  E('toggleFav("BANANA")');
+  E('srsAddWord("CHERRY")');
+  E('updateHomeCounts()');
+  ok('成长条显示已掌握数', w.document.getElementById('gMastered').textContent === '1');
+  ok('成长条显示收藏数', w.document.getElementById('gFav').textContent === '1');
+  ok('成长条显示待复习数', w.document.getElementById('gSrs').textContent === '1');
+  try { w.localStorage.removeItem('wordle_zh_v6_marks'); } catch (e) {}
+  try { w.localStorage.removeItem('wordle_zh_v6_srs'); } catch (e) {}
+
+  // --- 结果弹窗使用评价文案 + 连胜里程碑徽章 ---
+  try { w.localStorage.removeItem('wordle_zh_v6_stats'); } catch (e) {}
+  E('State.diff="gaokao";State.len=4;State.attempts=2;State.hints=0;State.excludeCount=0;State.timed=0');
+  E('newGame()');
+  E('State.validSet=new Set([State.answer,"ZZZZ"])');
+  // 故意猜中:先填错一次触发再修正?直接猜中需知道答案,用 answer
+  const winAns = E('State.answer');
+  for (let c = 0; c < 4; c++) E('handleKey("' + winAns[c] + '")');
+  E('submitGuess()');
+  await sleep(4 * 100 + 250 + 350);
+  ok('猜中后弹窗标题为评价文案(非"恭喜")', /(\u4e00\u51fb\u547d\u4e2d|\u6f02\u4eae|\u731c\u4e2d\u4e86|\u9006\u8f6c\u80dc\u5229)/.test(w.document.getElementById('modalContent').textContent));
+  try { w.localStorage.removeItem('wordle_zh_v6_stats'); } catch (e) {}
+
   // --- 设置瘦身:3 核心可见 + 高级折叠 ---
   E('openSettings()');
   ok('高级选项默认折叠', w.document.getElementById('spAdvanced').hasAttribute('hidden') === true);

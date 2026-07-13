@@ -42,6 +42,13 @@ function updateHomeCounts() {
     const due = srsDueCount();
     rv.textContent = due > 0 ? '复习 ' + due : '复习';
   }
+  // 成长条:已掌握 / 收藏 / 待复习
+  const gm = document.getElementById('gMastered');
+  const gf = document.getElementById('gFav');
+  const gs = document.getElementById('gSrs');
+  if (gm) gm.textContent = masteredCount();
+  if (gf) gf.textContent = Object.keys(loadMarks().fav).length;
+  if (gs) gs.textContent = srsTotalCount();
 }
 
 function openSettings() {
@@ -180,10 +187,20 @@ function buildResultModal(won) {
   const elapsed = Math.floor(gameElapsed() / 1000);
   const diffName = DIFFICULTIES.find(x => x.id === State.diff).name;
   const timedLabel = State.timed > 0 ? ' \u00b7 \u9650\u65f6' + State.timed + 's' : '';
-  const sub = (won ? '\u7b2c' + (lastWin + 1) + '\u6b21\u731c\u4e2d' : '\u672a\u80fd\u731c\u51fa\u7b54\u6848') + (State.startTime > 0 ? ' \u00b7 \u7528\u65f6 ' + fmtTime(elapsed) : '');
+  let title, sub;
+  if (won) {
+    const p = praiseWin(lastWin + 1, State.attempts, elapsed);
+    title = p.title; sub = p.sub;
+  } else {
+    title = '\u6e38\u620f\u7ed3\u675f'; sub = '\u672a\u80fd\u731c\u51fa\u7b54\u6848';
+  }
+  if (State.startTime > 0) sub += ' \u00b7 \u7528\u65f6 ' + fmtTime(elapsed);
+  // 连胜里程碑徽章(仅猜中时)
+  const ms = won ? streakMilestone(s.streak) : null;
+  const msHtml = ms ? '<div class="ms-badge">\u2605 ' + ms + '</div>' : '';
   document.getElementById('modalContent').innerHTML =
-    '<div class="mt">' + (won ? '\u606d\u559c!' : '\u6e38\u620f\u7ed3\u675f') + '</div>' +
-    '<div class="mst">' + sub + '</div>' +
+    '<div class="mt">' + title + '</div>' +
+    '<div class="mst">' + sub + '</div>' + msHtml +
     '<div class="mw">' + State.answer + '</div>' +
     '<div id="resultDict">' + resultDictMeanHtml(State.answer) + '</div>' +
     '<div class="dt">\u731c\u8bcd\u5206\u5e03 (' + diffName + ' \u00b7 ' + State.len + '\u5b57\u6bcd' + timedLabel + ')</div>' + distHtml +
@@ -360,7 +377,15 @@ function showWordDetail(word) {
   document.getElementById('backLib').onclick = showLibrary;
   document.getElementById('closeWord').onclick = hideModal;
   document.getElementById('detailFav').onclick = () => { toggleFav(word); showWordDetail(word); };
-  document.getElementById('detailMaster').onclick = () => { toggleMaster(word); showWordDetail(word); };
+  document.getElementById('detailMaster').onclick = () => {
+    const before = isMastered(word);
+    toggleMaster(word);
+    if (!before && isMastered(word)) {
+      const ms = masteredMilestone(masteredCount());
+      toast(ms || '\u5df2\u638c\u63e1 \u2713');
+    }
+    showWordDetail(word);
+  };
   ensureDict(() => {
     const el = document.getElementById('wordDictWrap');
     if (el) { const r2 = renderDictBlock(word); el.innerHTML = '<div class="mst">' + r2.mean + '</div>' + r2.html; }
@@ -557,7 +582,17 @@ function renderLibList() {
     b.onclick = e => {
       e.stopPropagation();
       const w = b.dataset.word;
-      const on = b.dataset.mark === 'fav' ? toggleFav(w) : toggleMaster(w);
+      let on;
+      if (b.dataset.mark === 'fav') {
+        on = toggleFav(w);
+      } else {
+        const before = isMastered(w);
+        on = toggleMaster(w);
+        if (!before && on) {
+          const ms = masteredMilestone(masteredCount());
+          toast(ms || '\u5df2\u638c\u63e1 \u2713');
+        }
+      }
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       // 若当前在收藏/已掌握筛选下,移除标记后需重渲染列表
       if (!on && ((b.dataset.mark === 'fav' && libState.status === 'fav') || (b.dataset.mark === 'master' && libState.status === 'master'))) {
@@ -625,9 +660,10 @@ function renderReviewCard() {
   if (reviewState.idx >= reviewState.queue.length) {
     // 完成一轮复习即视为今日学习,自动签到
     markSigninToday();
+    const praise = reviewPraise(reviewState.known, reviewState.queue.length);
     document.getElementById('modalContent').innerHTML =
       '<div class="mt">\u590d\u4e60\u5b8c\u6210</div>' +
-      '<div class="mst">\u672c\u8f6e ' + reviewState.queue.length + ' \u8bcd</div>' +
+      (praise ? '<div class="mst" style="color:#4a9d54">' + praise + '</div>' : '<div class="mst">\u672c\u8f6e ' + reviewState.queue.length + ' \u8bcd</div>') +
       '<div class="stats" style="margin:18px 0"><div class="si"><div class="sn" style="color:#4a9d54">' + reviewState.known + '</div><div class="sl">\u8bb0\u5f97</div></div><div class="si"><div class="sn" style="color:#e7534b">' + reviewState.unknown + '</div><div class="sl">\u4e0d\u8bb0\u5f97</div></div></div>' +
       '<div class="mb"><button class="mbtn p" id="reviewDone">\u5b8c\u6210</button></div>';
     showModal();
@@ -672,7 +708,12 @@ function renderReviewCard() {
   };
   const remove = document.getElementById('removeWordBtn');
   if (remove) remove.onclick = () => {
+    const became = markMastered(word); // 同步标记为已掌握(单向),返回是否首次
     srsRemoveWord(word);
+    if (became) {
+      const ms = masteredMilestone(masteredCount());
+      toast(ms || '\u5df2\u638c\u63e1 \u2713');
+    }
     reviewState.idx++;
     reviewState.revealed = false;
     renderReviewCard();
