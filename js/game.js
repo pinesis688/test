@@ -96,7 +96,14 @@ function tileSize() {
   const w = Math.min(window.innerWidth - 20, 500);
   const cols = State.len;
   const gap = 5, pad = 16;
-  return Math.floor((w - pad - gap * (cols - 1)) / cols);
+  const byWidth = Math.floor((w - pad - gap * (cols - 1)) / cols);
+  // 同时约束高度:留出 gbar(~44) + 键盘(~200) + 边距后,按行数均分可用高度
+  // 避免行数多时棋盘撑高、键盘被顶出可视区
+  const reservedH = 260;
+  const availH = Math.max(120, window.innerHeight - reservedH);
+  const rows = State.attempts;
+  const byHeight = Math.floor((availH - gap * (rows - 1)) / rows);
+  return Math.max(20, Math.min(byWidth, byHeight));
 }
 
 function applyHintLockedToBoard() {
@@ -159,6 +166,7 @@ function timeUp() {
   State.won = false;
   toast('时间到');
   saveGameState();
+  srsAddWord(State.answer);
   recordResult(false);
 }
 
@@ -219,6 +227,15 @@ function countCandidates() {
   return count;
 }
 
+// 模糊档位:避免精确泄露候选数,仅给粗略范围感知
+function candidateTier() {
+  const c = countCandidates();
+  if (c > 100) return '广';
+  if (c > 20) return '中';
+  if (c > 1) return '窄';
+  return '锁';
+}
+
 function serializeGame() {
   const rows = [];
   for (let r = 0; r <= State.curRow && r < State.attempts; r++) {
@@ -253,6 +270,7 @@ function saveGameState() {
 }
 
 function restoreGameState(saved) {
+  loadDict(); // 恢复对局时也预加载词典
   State.diff = saved.diff;
   State.len = saved.len;
   State.attempts = saved.attempts;
@@ -295,6 +313,7 @@ function restoreGameState(saved) {
 
 function newGame() {
   clearGameSave();
+  loadDict(); // 后台预加载词典(1.5MB),用户游玩期间加载完成,结果弹窗立即可用
   const pool = getWordPool(State.diff, State.len);
   if (pool.length === 0) {
     toast('该难度下无此长度的词汇');
@@ -416,6 +435,7 @@ function surrender() {
   State.won = false;
   stopTimer();
   saveGameState();
+  srsAddWord(State.answer);
   recordResult(false);
 }
 
@@ -452,11 +472,11 @@ function evaluateGuess(guess) {
           t.classList.remove('absent');
           t.classList.add('excluded');
         }
-      }, 300);
-    }, i * 200);
+      }, 250);
+    }, i * 100);
   });
   const finishedRow = State.curRow;
-  const delay = State.len * 200 + 400;
+  const delay = State.len * 100 + 250;
   setTimeout(() => {
     State.evaluating = false;
     if (won) {
@@ -465,13 +485,16 @@ function evaluateGuess(guess) {
       stopTimer();
       tiles.forEach((t, i) => setTimeout(() => t.classList.add('win'), i * 100));
       saveGameState();
-      setTimeout(() => recordResult(true, finishedRow + 1), 600);
+      const p = praiseWin(finishedRow + 1, State.attempts, Math.floor(gameElapsed() / 1000));
+      toast(p.title + ' ' + p.sub);
+      recordResult(true, finishedRow + 1);
     } else if (finishedRow + 1 >= State.attempts) {
       State.gameOver = true;
       State.won = false;
       stopTimer();
       saveGameState();
-      setTimeout(() => recordResult(false), 200);
+      srsAddWord(State.answer);
+      recordResult(false);
     } else {
       State.curRow++;
       State.curCol = 0;

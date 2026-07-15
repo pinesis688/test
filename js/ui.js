@@ -36,16 +36,41 @@ function updateHomeCounts() {
   const ss = document.getElementById('signinStreak');
   if (ss) ss.textContent = sg.streak || 0;
   const sub = document.getElementById('signinSub');
-  if (sub) sub.textContent = sg.lastDate === dateKey(now) ? '今日已签到' : '点击签到';
+  if (sub) sub.textContent = sg.lastDate === dateKey(now) ? '\u4eca\u65e5\u5df2\u5b66\u4e60 \u2713' : '\u70b9\u51fb\u7b7e\u5230 \u00b7 \u73a9\u4e00\u5c40\u4e5f\u7b97';
+  const rv = document.getElementById('tabReview');
+  if (rv) {
+    const due = srsDueCount();
+    rv.textContent = due > 0 ? '复习 ' + due : '复习';
+  }
+  // 成长条:已掌握 / 收藏 / 待复习
+  const gm = document.getElementById('gMastered');
+  const gf = document.getElementById('gFav');
+  const gs = document.getElementById('gSrs');
+  if (gm) gm.textContent = masteredCount();
+  if (gf) gf.textContent = Object.keys(loadMarks().fav).length;
+  if (gs) gs.textContent = srsTotalCount();
 }
 
 function openSettings() {
   document.getElementById('settingsPanel').classList.add('show');
   buildSpOptions();
+  // 每次打开默认折叠高级选项
+  const adv = document.getElementById('spAdvanced');
+  const tg = document.getElementById('spAdvToggle');
+  if (adv) adv.setAttribute('hidden', '');
+  if (tg) { tg.classList.remove('open'); tg.setAttribute('aria-expanded', 'false'); }
 }
 
 function closeSettings() {
   document.getElementById('settingsPanel').classList.remove('show');
+}
+
+// 高级选项折叠态下的当前值摘要,无需展开即可查看
+function updateSpAdvLabel() {
+  const t = document.getElementById('spAdvToggle');
+  if (!t) return;
+  const timedTxt = State.timed > 0 ? State.timed + 's' : '关';
+  t.innerHTML = '高级选项 <span class="sp-adv-sum">提示' + State.hints + '/排除' + State.excludeCount + '/限时' + timedTxt + '</span> <span class="sp-adv-caret">▾</span>';
 }
 
 function buildSpOptions() {
@@ -58,6 +83,7 @@ function buildSpOptions() {
   const d = DIFFICULTIES.find(x => x.id === State.diff);
   const cnt = getWordPool(State.diff, State.len).length;
   document.getElementById('spDiffHint').textContent = d.name + ' \u00b7 ' + cnt + '\u8bcd';
+  updateSpAdvLabel();
 }
 
 function buildSpOpts(id, items, current, render) {
@@ -94,12 +120,13 @@ function onSpSelect(id, item) {
   else if (id === 'spHintOpts') State.hints = item;
   else if (id === 'spExcludeOpts') State.excludeCount = item;
   else if (id === 'spTimedOpts') State.timed = item;
+  if (id === 'spHintOpts' || id === 'spExcludeOpts' || id === 'spTimedOpts') updateSpAdvLabel();
 }
 
 function updateGameInfo() {
   const d = DIFFICULTIES.find(x => x.id === State.diff);
-  const cand = countCandidates();
-  let html = '<span>\u96be\u5ea6<b>' + d.name + '</b></span><span>\u957f\u5ea6<b>' + State.len + '</b></span><span>\u63d0\u793a<b>' + State.hintsLeft + '</b></span><span>\u5019\u9009<b>' + cand + '</b></span>';
+  const tier = candidateTier();
+  let html = '<span>\u96be\u5ea6<b>' + d.name + '</b></span><span>\u957f\u5ea6<b>' + State.len + '</b></span><span>\u63d0\u793a<b>' + State.hintsLeft + '</b></span><span>\u8303\u56f4<b>' + tier + '</b></span>';
   if (State.timed > 0 && State.startTime > 0) {
     const warn = State.timeLeft <= 10 ? ' warn' : '';
     html += '<span class="timer' + warn + '">' + fmtTime(State.timeLeft) + '</span>';
@@ -129,6 +156,8 @@ function recordResult(won, guesses) {
     s.streak = 0;
   }
   saveStats();
+  // 完成一局即视为今日学习,自动签到(连续学习天数与学习行为挂钩)
+  markSigninToday();
   updateHomeCounts();
   setTimeout(() => showResult(won), 300);
 }
@@ -155,19 +184,25 @@ function buildResultModal(won) {
   const s = State.stats[statKey()] || emptyStat();
   const lastWin = State.won ? State.curRow : -1;
   const distHtml = buildDistHtml(s, State.attempts, lastWin);
-  const dict = typeof DICT !== 'undefined' ? DICT[State.answer] : null;
-  const meaning = typeof MEAN !== 'undefined' ? (MEAN[State.answer] || '') : '';
   const elapsed = Math.floor(gameElapsed() / 1000);
   const diffName = DIFFICULTIES.find(x => x.id === State.diff).name;
-  let dictHtml = '';
-  if (dict) dictHtml = '<div class="mphon">' + dict.p + '</div><div class="mpos">' + dict.s + '</div><div class="mex">' + dict.e + '</div>';
   const timedLabel = State.timed > 0 ? ' \u00b7 \u9650\u65f6' + State.timed + 's' : '';
-  const sub = (won ? '\u7b2c' + (lastWin + 1) + '\u6b21\u731c\u4e2d' : '\u672a\u80fd\u731c\u51fa\u7b54\u6848') + (State.startTime > 0 ? ' \u00b7 \u7528\u65f6 ' + fmtTime(elapsed) : '');
+  let title, sub;
+  if (won) {
+    const p = praiseWin(lastWin + 1, State.attempts, elapsed);
+    title = p.title; sub = p.sub;
+  } else {
+    title = '\u6e38\u620f\u7ed3\u675f'; sub = '\u672a\u80fd\u731c\u51fa\u7b54\u6848';
+  }
+  if (State.startTime > 0) sub += ' \u00b7 \u7528\u65f6 ' + fmtTime(elapsed);
+  // 连胜里程碑徽章(仅猜中时)
+  const ms = won ? streakMilestone(s.streak) : null;
+  const msHtml = ms ? '<div class="ms-badge">\u2605 ' + ms + '</div>' : '';
   document.getElementById('modalContent').innerHTML =
-    '<div class="mt">' + (won ? '\u606d\u559c!' : '\u6e38\u620f\u7ed3\u675f') + '</div>' +
-    '<div class="mst">' + sub + '</div>' +
-    '<div class="mw">' + State.answer + '</div>' + dictHtml +
-    '<div class="mm">' + (meaning || '\u6682\u65e0\u91ca\u4e49') + '</div>' +
+    '<div class="mt">' + title + '</div>' +
+    '<div class="mst">' + sub + '</div>' + msHtml +
+    '<div class="mw">' + State.answer + '</div>' +
+    '<div id="resultDict">' + resultDictMeanHtml(State.answer) + '</div>' +
     '<div class="dt">\u731c\u8bcd\u5206\u5e03 (' + diffName + ' \u00b7 ' + State.len + '\u5b57\u6bcd' + timedLabel + ')</div>' + distHtml +
     buildStatsHtml(s) +
     '<div class="mb"><button class="mbtn sh" id="shareBtn">\u5206\u4eab</button><button class="mbtn p" id="playAgain">\u518d\u6765\u4e00\u5c40</button><button class="mbtn s" id="backHome">\u9996\u9875</button></div>';
@@ -177,7 +212,30 @@ function buildResultModal(won) {
   document.getElementById('shareBtn').onclick = shareResult;
 }
 
-function showResult(won) { buildResultModal(won); }
+// 结果弹窗的词典+释义片段(可独立刷新,避免重渲染整个弹窗)
+function resultDictMeanHtml(word) {
+  const dict = getDictEntry(word);
+  let meaning = (typeof MEAN !== 'undefined' ? (MEAN[word] || '') : '');
+  let dictHtml = '';
+  if (dict) dictHtml = '<div class="mphon">' + (dict.p || '') + '</div><div class="mpos">' + (dict.s || '') + '</div>' + (dict.e ? '<div class="mex">' + dict.e + '</div>' : '');
+  if (!meaning && dict) {
+    const firstE = (dict.e || '').split('\n')[0].replace(/\[[^\]]+\]/g, '').trim();
+    if (firstE) meaning = firstE.length > 60 ? firstE.substring(0, 60) + '...' : firstE;
+  }
+  if (!dictHtml && !dictLoaded()) {
+    if (dictFailed()) dictHtml = '<div class="mphon" style="opacity:.5;font-size:11px">\u8bcd\u5178\u8be6\u60c5\u52a0\u8f7d\u5931\u8d25</div>';
+    else dictHtml = '<div class="mphon" style="opacity:.5">\u52a0\u8f7d\u91ca\u4e49\u2026</div>';
+  }
+  return dictHtml + '<div class="mm">' + (meaning || '\u6682\u65e0\u91ca\u4e49') + '</div>';
+}
+
+function showResult(won) {
+  buildResultModal(won);
+  ensureDict(() => {
+    const el = document.getElementById('resultDict');
+    if (el) el.innerHTML = resultDictMeanHtml(State.answer);
+  });
+}
 
 function shareResult() {
   let text = 'Wordle ' + DIFFICULTIES.find(x => x.id === State.diff).name + ' ' + State.len + '\u5b57\u6bcd';
@@ -242,7 +300,7 @@ function showHelp() {
     '<div class="hi">\u6392\u9664:\u968f\u673a\u6392\u9664\u672a\u4f7f\u7528\u5b57\u6bcd,\u6709\u8bef\u4e2d\u7b54\u6848\u98ce\u9669(\u6570\u91cf\u9996\u9875\u53ef\u9009 0-6)</div>' +
     '<div class="hi">\u653e\u5f03:\u7ed3\u675f\u672c\u5c40\u5e76\u663e\u793a\u7b54\u6848</div>' +
     '<div class="hi">\u9650\u65f6:\u5012\u8ba1\u65f6\u6a21\u5f0f,\u65f6\u95f4\u5230\u81ea\u52a8\u5224\u8d1f</div>' +
-    '<div class="hi">\u5019\u9009:\u5b9e\u65f6\u663e\u793a\u5269\u4f59\u53ef\u80fd\u8bcd\u6570</div>' +
+    '<div class="hi">\u8303\u56f4:\u7c97\u7565\u63d0\u793a\u5269\u4f59\u5019\u9009\u8bcd\u8303\u56f4(\u5e7f/\u4e2d/\u7a84/\u9501),\u907f\u514d\u7cbe\u786e\u6cc4\u9732</div>' +
     '</div>' +
     '<button class="hclose" id="closeHelp">\u660e\u767d\u4e86</button>';
   showModal();
@@ -262,17 +320,14 @@ function toast(msg) {
 }
 
 function doSignin() {
-  const today = dateKey(new Date());
   const data = loadSignin();
-  if (data.lastDate === today) { toast('\u4eca\u5929\u5df2\u7b7e\u5230 \u00b7 \u8fde\u7eed' + data.streak + '\u5929'); return; }
-  const yesterday = dateKey(new Date(Date.now() - 86400000));
-  if (data.lastDate === yesterday) data.streak++; else data.streak = 1;
-  data.lastDate = today;
-  data.totalDays = (data.totalDays || 0) + 1;
-  saveSignin(data);
+  const today = dateKey(new Date());
+  if (data.lastDate === today) { toast('\u4eca\u5929\u5df2\u7b7e\u5230 \u00b7 \u8fde\u7eed' + (data.streak || 0) + '\u5929'); return; }
+  markSigninToday();
+  const fresh = loadSignin();
   updateHomeCounts();
-  toast('\u7b7e\u5230\u6210\u529f!\u8fde\u7eed' + data.streak + '\u5929');
-  showSigninResult(data);
+  toast('\u7b7e\u5230\u6210\u529f!\u8fde\u7eed' + fresh.streak + '\u5929');
+  showSigninResult(fresh);
 }
 
 function showSigninResult(d) {
@@ -289,47 +344,73 @@ function showSigninResult(d) {
 }
 
 function renderDictBlock(word) {
-  const dict = DICT[word];
+  const dict = getDictEntry(word);
   let mean = MEAN[word] || '';
   if (!mean && dict) {
     const firstE = (dict.e || '').split('\n')[0].replace(/\[[^\]]+\]/g, '').trim();
     if (firstE) mean = firstE.length > 40 ? firstE.substring(0, 40) + '...' : firstE;
   }
   if (!mean) mean = '';
-  let dictHtml = '';
+  let dictHtml;
   if (dict) {
     dictHtml = '<div class="dw"><div class="dwp">' + (dict.p || '') + '</div><div class="dws">' + (dict.s || '') + '</div>' + (dict.e ? '<div class="dwe">' + dict.e + '</div>' : '') + (dict.ex ? '<div class="dwex">\u4f8b: ' + dict.ex + '</div>' : '') + '</div>';
-  } else {
+  } else if (dictLoaded()) {
     dictHtml = '<div class="dw" style="opacity:.7;text-align:center;padding:12px">\u8be5\u8bcd\u6682\u65e0\u91ca\u4e49<br><span style="font-size:11px;opacity:.6">' + (mean || '\u6682\u65e0\u91ca\u4e49') + '</span></div>';
+  } else if (dictFailed()) {
+    // 加载失败:不显示转圈,仅提示失败(中文释义仍由 mean 提供),重开弹窗即重试
+    dictHtml = '<div class="dw" style="opacity:.5;text-align:center;padding:8px;font-size:11px">\u8bcd\u5178\u8be6\u60c5\u52a0\u8f7d\u5931\u8d25</div>';
+  } else {
+    dictHtml = '<div class="dw" style="opacity:.5;text-align:center;padding:12px"><span class="dict-loading">\u52a0\u8f7d\u91ca\u4e49\u2026</span></div>';
   }
   return { mean: mean || '\u6682\u65e0\u91ca\u4e49', html: dictHtml };
 }
 
 function showWordDetail(word) {
-  const { mean, html: dictHtml } = renderDictBlock(word);
+  const r = renderDictBlock(word);
+  const fav = isFav(word);
+  const master = isMastered(word);
   document.getElementById('modalContent').innerHTML =
     '<div class="mt" style="letter-spacing:6px">' + word + '</div>' +
-    '<div class="mst">' + mean + '</div>' + dictHtml +
+    '<div id="wordDictWrap"><div class="mst">' + r.mean + '</div>' + r.html + '</div>' +
+    '<div class="mb"><button class="mbtn' + (fav ? ' sh' : ' s') + '" id="detailFav">' + (fav ? '\u2605 \u5df2\u6536\u85cf' : '\u2606 \u6536\u85cf') + '</button><button class="mbtn' + (master ? ' p' : ' s') + '" id="detailMaster">' + (master ? '\u2713 \u5df2\u638c\u63e1' : '\u25cb \u638c\u63e1') + '</button></div>' +
     '<div class="mb"><button class="mbtn s" id="backLib">\u8fd4\u56de\u8bcd\u5e93</button><button class="mbtn p" id="closeWord">\u5173\u95ed</button></div>';
   document.getElementById('backLib').onclick = showLibrary;
   document.getElementById('closeWord').onclick = hideModal;
+  document.getElementById('detailFav').onclick = () => { toggleFav(word); showWordDetail(word); };
+  document.getElementById('detailMaster').onclick = () => {
+    const before = isMastered(word);
+    toggleMaster(word);
+    if (!before && isMastered(word)) {
+      const ms = masteredMilestone(masteredCount());
+      toast(ms || '\u5df2\u638c\u63e1 \u2713');
+    }
+    showWordDetail(word);
+  };
+  ensureDict(() => {
+    const el = document.getElementById('wordDictWrap');
+    if (el) { const r2 = renderDictBlock(word); el.innerHTML = '<div class="mst">' + r2.mean + '</div>' + r2.html; }
+  });
 }
 
 function showDictLookup() {
   const w = State.answer;
   if (!w) { toast('\u8bf7\u5148\u5f00\u59cb\u4e00\u5c40'); return; }
-  const { mean, html: dictHtml } = renderDictBlock(w);
+  const r = renderDictBlock(w);
   document.getElementById('modalContent').innerHTML =
     '<div class="mt" style="letter-spacing:6px">' + w + '</div>' +
-    '<div class="mst">' + mean + '</div>' + dictHtml +
+    '<div id="lookupDictWrap"><div class="mst">' + r.mean + '</div>' + r.html + '</div>' +
     '<div class="mb"><button class="mbtn s" id="closeDict">\u5173\u95ed</button></div>';
   showModal();
   document.getElementById('closeDict').onclick = hideModal;
+  ensureDict(() => {
+    const el = document.getElementById('lookupDictWrap');
+    if (el) { const r2 = renderDictBlock(w); el.innerHTML = '<div class="mst">' + r2.mean + '</div>' + r2.html; }
+  });
 }
 
 // 词库浏览状态
 const LIB_PAGE_SIZE = 40;
-let libState = { mode: 'word', diff: 'all', len: 'all', page: 0, query: '', list: [] };
+let libState = { mode: 'word', diff: 'all', len: 'all', status: 'all', page: 0, query: '', list: [] };
 
 function getLibWordList() {
   let words = [];
@@ -360,10 +441,15 @@ function showLibrary() {
   libState.mode = 'word';
   libState.diff = 'all';
   libState.len = 'all';
+  libState.status = 'all';
   libState.page = 0;
   libState.query = '';
   libState.list = getLibWordList();
   renderLibrary();
+  // 词典懒加载:加载完成后刷新"详"标记(仅在词库仍打开时)
+  if (!dictLoaded()) {
+    ensureDict(() => { if (document.getElementById('libList')) renderLibList(); });
+  }
 }
 
 function renderLibrary() {
@@ -382,6 +468,10 @@ function renderLibrary() {
     LENGTHS.forEach(l => {
       filterHtml += '<button class="lib-f' + (libState.len == l ? ' active' : '') + '" data-len="' + l + '">' + l + '\u5b57</button>';
     });
+    filterHtml += '</div><div class="lib-fgroup">';
+    filterHtml += '<button class="lib-f' + (libState.status === 'all' ? ' active' : '') + '" data-status="all">\u5168\u90e8</button>';
+    filterHtml += '<button class="lib-f' + (libState.status === 'fav' ? ' active' : '') + '" data-status="fav">\u2606 \u6536\u85cf</button>';
+    filterHtml += '<button class="lib-f' + (libState.status === 'master' ? ' active' : '') + '" data-status="master">\u2713 \u5df2\u638c\u63e1</button>';
     filterHtml += '</div></div>';
     filterHtml += '<div class="lib-search"><input type="text" id="libInput" placeholder="\u8f93\u5165\u5355\u8bcd\u6216\u91ca\u4e49..." maxlength="20" autocomplete="off"><button class="lib-btn" id="libSearch">\u67e5\u8be2</button></div>';
   } else {
@@ -410,6 +500,7 @@ function renderLibrary() {
     b.onclick = () => {
       if (b.dataset.diff !== undefined) libState.diff = b.dataset.diff;
       if (b.dataset.len !== undefined) libState.len = b.dataset.len === 'all' ? 'all' : parseInt(b.dataset.len);
+      if (b.dataset.status !== undefined) libState.status = b.dataset.status;
       libState.page = 0;
       libState.list = getLibWordList();
       renderLibrary();
@@ -435,6 +526,8 @@ function renderLibList() {
   let filtered;
   if (libState.mode === 'word') {
     filtered = libFilterWords(libState.list);
+    if (libState.status === 'fav') filtered = filtered.filter(w => isFav(w));
+    else if (libState.status === 'master') filtered = filtered.filter(w => isMastered(w));
   } else {
     const q = libState.query.toLowerCase();
     filtered = q ? libState.list.filter(w => w.indexOf(q) >= 0 || (IDIOM[w] && IDIOM[w].indexOf(q) >= 0)) : libState.list;
@@ -450,9 +543,18 @@ function renderLibList() {
     html = '<div style="text-align:center;opacity:.6;padding:20px">\u672a\u627e\u5230</div>';
   } else if (libState.mode === 'word') {
     pageItems.forEach(w => {
-      const hasDict = !!DICT[w];
+      const hasDict = !!getDictEntry(w);
       const mean = MEAN[w] || '';
-      html += '<div class="lib-item ' + (hasDict ? 'has-dict' : '') + '" data-word="' + w + '"><span class="lw">' + w + '</span>' + (hasDict ? '<span class="ld">\u8be6</span>' : '<span class="ld" style="opacity:.3">\u00b7</span>') + '<span class="lm">' + mean + '</span></div>';
+      const fav = isFav(w);
+      const master = isMastered(w);
+      const cls = (hasDict ? 'has-dict' : '') + (master ? ' mastered' : '') + (fav ? ' fav' : '');
+      html += '<div class="lib-item ' + cls.trim() + '" data-word="' + w + '">' +
+        '<span class="lw">' + w + '</span>' +
+        (hasDict ? '<span class="ld">\u8be6</span>' : '<span class="ld" style="opacity:.3">\u00b7</span>') +
+        '<span class="lm">' + mean + '</span>' +
+        '<button class="lib-mark fav' + (fav ? ' on' : '') + '" data-mark="fav" data-word="' + w + '" title="\u6536\u85cf" aria-label="\u6536\u85cf" aria-pressed="' + (fav ? 'true' : 'false') + '">' + (fav ? '\u2605' : '\u2606') + '</button>' +
+        '<button class="lib-mark master' + (master ? ' on' : '') + '" data-mark="master" data-word="' + w + '" title="\u6807\u8bb0\u5df2\u638c\u63e1" aria-label="\u5df2\u638c\u63e1" aria-pressed="' + (master ? 'true' : 'false') + '">' + (master ? '\u2713' : '\u25cb') + '</button>' +
+        '</div>';
     });
   } else {
     pageItems.forEach(w => {
@@ -475,7 +577,39 @@ function renderLibList() {
   const next = document.getElementById('libNext');
   if (prev) prev.onclick = () => { if (libState.page > 0) { libState.page--; renderLibList(); } };
   if (next) next.onclick = () => { if (libState.page < totalPages - 1) { libState.page++; renderLibList(); } };
-  // 绑定点击
+  // 标记按钮(收藏/掌握):阻止冒泡,避免触发详情
+  list.querySelectorAll('.lib-mark').forEach(b => {
+    b.onclick = e => {
+      e.stopPropagation();
+      const w = b.dataset.word;
+      let on;
+      if (b.dataset.mark === 'fav') {
+        on = toggleFav(w);
+      } else {
+        const before = isMastered(w);
+        on = toggleMaster(w);
+        if (!before && on) {
+          const ms = masteredMilestone(masteredCount());
+          toast(ms || '\u5df2\u638c\u63e1 \u2713');
+        }
+      }
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      // 若当前在收藏/已掌握筛选下,移除标记后需重渲染列表
+      if (!on && ((b.dataset.mark === 'fav' && libState.status === 'fav') || (b.dataset.mark === 'master' && libState.status === 'master'))) {
+        renderLibList();
+      } else {
+        // 仅更新该按钮与项样式
+        b.classList.toggle('on', on);
+        b.textContent = b.dataset.mark === 'fav' ? (on ? '\u2605' : '\u2606') : (on ? '\u2713' : '\u25cb');
+        const item = b.closest('.lib-item');
+        if (item) {
+          item.classList.toggle('fav', b.dataset.mark === 'fav' && on);
+          item.classList.toggle('mastered', b.dataset.mark === 'master' && on);
+        }
+      }
+    };
+  });
+  // 绑定点击(详情)
   list.querySelectorAll('.lib-item').forEach(el => {
     el.onclick = () => {
       if (libState.mode === 'word') showWordDetail(el.dataset.word);
@@ -501,6 +635,98 @@ function showHome() {
   document.getElementById('game').classList.remove('show');
   buildDiffTabs();
   updateHomeCounts();
+}
+
+// ===== 错词本复习流程(SRS) =====
+let reviewState = { queue: [], idx: 0, revealed: false, known: 0, unknown: 0 };
+
+function showReview() {
+  const due = srsDueWords();
+  if (due.length === 0) {
+    document.getElementById('modalContent').innerHTML =
+      '<div class="mt">\u590d\u4e60</div>' +
+      '<div class="mst">\u5f53\u524d\u6ca1\u6709\u5230\u671f\u9700\u590d\u4e60\u7684\u9519\u8bcd</div>' +
+      '<div class="mex" style="font-style:normal;text-align:center">\u9519\u8bcd\u672c\u5171 ' + srsTotalCount() + ' \u8bcd</div>' +
+      '<div class="mb"><button class="mbtn p" id="closeReview">\u5173\u95ed</button></div>';
+    showModal();
+    document.getElementById('closeReview').onclick = hideModal;
+    return;
+  }
+  reviewState = { queue: due, idx: 0, revealed: false, known: 0, unknown: 0 };
+  renderReviewCard();
+}
+
+function renderReviewCard() {
+  if (reviewState.idx >= reviewState.queue.length) {
+    // 完成一轮复习即视为今日学习,自动签到
+    markSigninToday();
+    const praise = reviewPraise(reviewState.known, reviewState.queue.length);
+    document.getElementById('modalContent').innerHTML =
+      '<div class="mt">\u590d\u4e60\u5b8c\u6210</div>' +
+      (praise ? '<div class="mst" style="color:#4a9d54">' + praise + '</div>' : '<div class="mst">\u672c\u8f6e ' + reviewState.queue.length + ' \u8bcd</div>') +
+      '<div class="stats" style="margin:18px 0"><div class="si"><div class="sn" style="color:#4a9d54">' + reviewState.known + '</div><div class="sl">\u8bb0\u5f97</div></div><div class="si"><div class="sn" style="color:#e7534b">' + reviewState.unknown + '</div><div class="sl">\u4e0d\u8bb0\u5f97</div></div></div>' +
+      '<div class="mb"><button class="mbtn p" id="reviewDone">\u5b8c\u6210</button></div>';
+    showModal();
+    document.getElementById('reviewDone').onclick = () => { hideModal(); updateHomeCounts(); };
+    return;
+  }
+  const word = reviewState.queue[reviewState.idx];
+  const r = renderDictBlock(word);
+  const progress = (reviewState.idx + 1) + '/' + reviewState.queue.length;
+  let body;
+  if (!reviewState.revealed) {
+    body = '<div style="font-size:13px;color:#8a8a92;margin:10px 0">\u60f3\u60f3\u8fd9\u4e2a\u8bcd\u7684\u610f\u601d,\u51c6\u5907\u597d\u540e\u67e5\u770b</div>' +
+      '<div class="mw" style="letter-spacing:6px">' + word + '</div>' +
+      '<div class="mb"><button class="mbtn p" id="revealBtn">\u663e\u793a\u91ca\u4e49</button></div>';
+  } else {
+    body = '<div class="mw" style="letter-spacing:6px">' + word + '</div>' +
+      '<div id="reviewDictWrap"><div class="mst">' + r.mean + '</div>' + r.html + '</div>' +
+      '<div class="mb"><button class="mbtn danger" id="unknownBtn">\u4e0d\u8bb0\u5f97</button><button class="mbtn p" id="knownBtn">\u8bb0\u5f97</button></div>';
+  }
+  document.getElementById('modalContent').innerHTML =
+    '<div class="mt">\u590d\u4e60 <span style="font-size:13px;color:#8a8a92;font-weight:400">' + progress + '</span></div>' +
+    body +
+    '<div style="margin-top:8px"><button class="mbtn" id="removeWordBtn" style="background:transparent;color:#8a8a92;font-size:11px;width:100%;min-width:0">\u5df2\u638c\u63e1,\u4ece\u9519\u8bcd\u672c\u79fb\u9664</button></div>';
+  showModal();
+  const reveal = document.getElementById('revealBtn');
+  if (reveal) reveal.onclick = () => { reviewState.revealed = true; renderReviewCard(); };
+  const known = document.getElementById('knownBtn');
+  if (known) known.onclick = () => {
+    srsReview(word, true);
+    reviewState.known++;
+    reviewState.idx++;
+    reviewState.revealed = false;
+    renderReviewCard();
+  };
+  const unknown = document.getElementById('unknownBtn');
+  if (unknown) unknown.onclick = () => {
+    srsReview(word, false);
+    reviewState.unknown++;
+    reviewState.idx++;
+    reviewState.revealed = false;
+    renderReviewCard();
+  };
+  const remove = document.getElementById('removeWordBtn');
+  if (remove) remove.onclick = () => {
+    const became = markMastered(word); // 同步标记为已掌握(单向),返回是否首次
+    srsRemoveWord(word);
+    if (became) {
+      const ms = masteredMilestone(masteredCount());
+      toast(ms || '\u5df2\u638c\u63e1 \u2713');
+    }
+    reviewState.idx++;
+    reviewState.revealed = false;
+    renderReviewCard();
+  };
+  // 词典懒加载:仅刷新当前揭示卡片(切卡后旧回调作废)
+  if (reviewState.revealed) {
+    ensureDict(() => {
+      if (reviewState.queue[reviewState.idx] === word && reviewState.revealed) {
+        const el = document.getElementById('reviewDictWrap');
+        if (el) { const r2 = renderDictBlock(word); el.innerHTML = '<div class="mst">' + r2.mean + '</div>' + r2.html; }
+      }
+    });
+  }
 }
 
 function showGame() {
