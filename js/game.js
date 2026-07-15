@@ -96,7 +96,14 @@ function tileSize() {
   const w = Math.min(window.innerWidth - 20, 500);
   const cols = State.len;
   const gap = 5, pad = 16;
-  return Math.floor((w - pad - gap * (cols - 1)) / cols);
+  const byWidth = Math.floor((w - pad - gap * (cols - 1)) / cols);
+  // 同时约束高度:留出 gbar(~44) + 键盘(~200) + 边距后,按行数均分可用高度
+  // 避免行数多时棋盘撑高、键盘被顶出可视区
+  const reservedH = 260;
+  const availH = Math.max(120, window.innerHeight - reservedH);
+  const rows = State.attempts;
+  const byHeight = Math.floor((availH - gap * (rows - 1)) / rows);
+  return Math.max(20, Math.min(byWidth, byHeight));
 }
 
 function applyHintLockedToBoard() {

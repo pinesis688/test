@@ -272,6 +272,22 @@ const E = x => w.eval(x);
   ok('词池缓存内容非空', E('window.__p1.length') > 100, E('window.__p1.length'));
   ok('不同维度不共享缓存', E('getWordPool("gaokao",5) === getWordPool("cet4",5)') === false);
 
+  // --- tile 尺寸受高度约束:行数多时不超出可视区 ---
+  // 模拟窄高屏幕(手机横屏),10行棋盘的 tile 应远小于仅按宽度算的尺寸
+  E('State.len=5;State.attempts=10');
+  const size10 = E('tileSize()');
+  // 10行时,按高度算:(availH - 9*5)/10,availH = innerHeight-260
+  // 宽度算:约 (innerWidth-20-16-20)/5。验证高度约束生效:size10 < 纯宽度尺寸
+  const byWidth = Math.floor((w.innerWidth - 20 - 16 - 5 * 4) / 5);
+  ok('10行棋盘 tile 受高度约束(<纯宽度尺寸)', size10 < byWidth, size10 + ' < ' + byWidth);
+  ok('10行棋盘 tile 不小于最小值20', size10 >= 20, size10);
+  ok('10行棋盘总高+键盘不超过可视高', size10 * 10 + 5 * 9 + 260 <= w.innerHeight + 5, (size10 * 10 + 5 * 9 + 260) + ' <= ' + (w.innerHeight + 5));
+  // 6行常规场景尺寸应正常(不被高度约束压到很小)
+  E('State.attempts=6');
+  const size6 = E('tileSize()');
+  ok('6行棋盘 tile 尺寸合理(>0)', size6 > 0, size6);
+  E('State.attempts=10'); // 恢复避免影响后续
+
   // --- 正反馈:评价文案 + 里程碑 ---
   ok('一击命中评价', E('praiseWin(1,6,0).title') === '\u4e00\u51fb\u547d\u4e2d!');
   ok('2-3次猜中评价漂亮', E('praiseWin(3,6,0).title') === '\u6f02\u4eae!');
